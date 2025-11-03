@@ -200,6 +200,10 @@ def main():
         controller.main_window = window
         logger.info("Controller main_window reference set")
 
+        # Set main_window reference in browser_manager for positioning
+        controller.browser_manager.set_main_window(window)
+        logger.info("Browser manager main_window reference set")
+
         # Load categories into sidebar
         logger.info("Loading categories into UI...")
         categories = controller.get_categories()

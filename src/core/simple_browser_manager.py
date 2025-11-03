@@ -21,14 +21,16 @@ class SimpleBrowserManager:
     - Lazy loading para evitar cuelgues
     """
 
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, main_window=None):
         """
         Inicializa el manager.
 
         Args:
             db_manager: Instancia de DBManager para persistencia
+            main_window: Referencia a MainWindow para posicionamiento (opcional)
         """
         self.db = db_manager
+        self.main_window = main_window
         self.browser_window: Optional['SimpleBrowserWindow'] = None
         self._home_url: Optional[str] = None
 
@@ -77,6 +79,11 @@ class SimpleBrowserManager:
             # Conectar señal de cierre
             self.browser_window.closed.connect(self._on_browser_closed)
 
+        # Posicionar al lado del sidebar si tenemos referencia a MainWindow
+        if self.main_window:
+            self.browser_window.position_near_sidebar(self.main_window)
+            logger.debug("Navegador posicionado al lado del sidebar")
+
         # Mostrar y traer al frente
         self.browser_window.show()
         self.browser_window.raise_()
@@ -110,6 +117,16 @@ class SimpleBrowserManager:
             True si el navegador existe y está visible
         """
         return self.browser_window is not None and self.browser_window.isVisible()
+
+    def set_main_window(self, main_window):
+        """
+        Establece la referencia a MainWindow para posicionamiento.
+
+        Args:
+            main_window: Referencia a MainWindow
+        """
+        self.main_window = main_window
+        logger.debug("MainWindow reference set in SimpleBrowserManager")
 
     # ==================== Configuración ====================
 

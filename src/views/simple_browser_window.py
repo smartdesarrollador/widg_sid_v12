@@ -277,6 +277,27 @@ class SimpleBrowserWindow(QWidget):
             self.status_label.setStyleSheet("color: #ff0000;")
             self.reload_btn.setEnabled(True)
 
+    # ==================== Posicionamiento ====================
+
+    def position_near_sidebar(self, sidebar_window):
+        """
+        Posiciona la ventana del navegador al lado del sidebar.
+
+        Args:
+            sidebar_window: Referencia a la ventana del sidebar (MainWindow)
+        """
+        # Obtener geometría del sidebar
+        sidebar_x = sidebar_window.x()
+        sidebar_y = sidebar_window.y()
+        sidebar_width = sidebar_window.width()
+
+        # Posicionar a la izquierda del sidebar con un gap de 10px
+        panel_x = sidebar_x - self.width() - 10  # 10px gap
+        panel_y = sidebar_y
+
+        self.move(panel_x, panel_y)
+        logger.debug(f"Navegador posicionado en ({panel_x}, {panel_y})")
+
     # ==================== Eventos ====================
 
     def closeEvent(self, event):
