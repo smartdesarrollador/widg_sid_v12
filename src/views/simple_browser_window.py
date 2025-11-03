@@ -16,8 +16,111 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QTimer
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineSettings, QWebEngineProfile, QWebEnginePage
+from PyQt6.QtGui import QAction
 
 logger = logging.getLogger(__name__)
+
+
+# ===========================================================================
+# Custom WebEngineView con menú contextual personalizado
+# ===========================================================================
+class CustomWebEngineView(QWebEngineView):
+    """
+    QWebEngineView personalizado con menú contextual que incluye
+    opción para guardar texto seleccionado como snippet.
+    """
+
+    # Señal para solicitar guardar snippet
+    save_snippet_requested = pyqtSignal(str)  # Emite el texto seleccionado
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.selected_text = ""
+        self.context_menu_pos = None  # Guardar posición del menú contextual
+
+    def contextMenuEvent(self, event):
+        """
+        Sobrescribe el menú contextual para agregar opción de guardar snippet.
+        """
+        # Guardar la posición ANTES de la llamada asíncrona
+        self.context_menu_pos = event.globalPos()
+
+        # Obtener el texto seleccionado mediante JavaScript
+        self.page().runJavaScript(
+            "window.getSelection().toString();",
+            lambda result: self._show_context_menu(result)
+        )
+
+    def _show_context_menu(self, selected_text):
+        """
+        Muestra el menú contextual con la opción de guardar snippet.
+
+        Args:
+            selected_text: Texto seleccionado obtenido via JavaScript
+        """
+        self.selected_text = selected_text.strip() if selected_text else ""
+
+        # Crear menú contextual
+        context_menu = QMenu(self)
+
+        # Aplicar estilo oscuro
+        context_menu.setStyleSheet("""
+            QMenu {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #3d3d3d;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 25px;
+                border-radius: 3px;
+            }
+            QMenu::item:selected {
+                background-color: #00d4ff;
+                color: #000000;
+            }
+            QMenu::separator {
+                height: 1px;
+                background-color: #3d3d3d;
+                margin: 5px 0px;
+            }
+        """)
+
+        # Si hay texto seleccionado, agregar opción de guardar snippet
+        if self.selected_text:
+            save_snippet_action = QAction("💾 Guardar como snippet", self)
+            save_snippet_action.triggered.connect(
+                lambda: self.save_snippet_requested.emit(self.selected_text)
+            )
+            context_menu.addAction(save_snippet_action)
+            context_menu.addSeparator()
+
+        # Agregar acciones estándar del navegador
+        back_action = QAction("⬅ Atrás", self)
+        back_action.triggered.connect(self.back)
+        back_action.setEnabled(self.page().history().canGoBack())
+        context_menu.addAction(back_action)
+
+        forward_action = QAction("➡ Adelante", self)
+        forward_action.triggered.connect(self.forward)
+        forward_action.setEnabled(self.page().history().canGoForward())
+        context_menu.addAction(forward_action)
+
+        reload_action = QAction("🔄 Recargar", self)
+        reload_action.triggered.connect(self.reload)
+        context_menu.addAction(reload_action)
+
+        context_menu.addSeparator()
+
+        # Copiar (solo si hay texto seleccionado)
+        if self.selected_text:
+            copy_action = QAction("📋 Copiar", self)
+            copy_action.triggered.connect(lambda: self.page().triggerAction(QWebEnginePage.WebAction.Copy))
+            context_menu.addAction(copy_action)
+
+        # Mostrar menú en la posición guardada del click derecho
+        if self.context_menu_pos:
+            context_menu.exec(self.context_menu_pos)
 
 # ===========================================================================
 # Windows AppBar API Constants and Structures
@@ -478,8 +581,8 @@ class SimpleBrowserWindow(QWidget):
             url: URL inicial de la pestaña
             title: Título de la pestaña
         """
-        # Crear nuevo QWebEngineView con perfil persistente
-        browser = QWebEngineView()
+        # Crear nuevo CustomWebEngineView con perfil persistente
+        browser = CustomWebEngineView()
 
         # Si tenemos perfil persistente, crear página con ese perfil
         if self.web_profile:
@@ -502,6 +605,7 @@ class SimpleBrowserWindow(QWidget):
         browser.loadFinished.connect(lambda success: self._on_load_finished(success))
         browser.urlChanged.connect(lambda url: self._on_url_changed(url))
         browser.titleChanged.connect(lambda title: self._on_title_changed(title))
+        browser.save_snippet_requested.connect(self.save_snippet_as_item)
 
         # Agregar a la lista de pestañas
         self.tabs.append(browser)
@@ -1338,6 +1442,108 @@ class SimpleBrowserWindow(QWidget):
                 self,
                 "Error",
                 f"Error al guardar URL:\n{str(e)}"
+            )
+
+    def save_snippet_as_item(self, selected_text: str):
+        """
+        Guarda el texto seleccionado como snippet (item CODE o TEXT).
+
+        Args:
+            selected_text: Texto seleccionado del navegador
+        """
+        try:
+            if not self.db:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "No hay conexión a la base de datos"
+                )
+                return
+
+            if not selected_text or not selected_text.strip():
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Sin texto",
+                    "No hay texto seleccionado para guardar"
+                )
+                return
+
+            # Obtener categorías de la base de datos
+            from models.category import Category
+            categories_data = self.db.get_categories()
+
+            # Mapear correctamente los datos (id -> category_id)
+            categories = []
+            for cat in categories_data:
+                category = Category(
+                    category_id=cat['id'],
+                    name=cat['name'],
+                    icon=cat.get('icon', ''),
+                    order_index=cat.get('order_index', 0),
+                    is_active=cat.get('is_active', True),
+                    is_predefined=cat.get('is_predefined', False),
+                    color=cat.get('color'),
+                    badge=cat.get('badge')
+                )
+                categories.append(category)
+
+            if not categories:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self,
+                    "Sin categorías",
+                    "No hay categorías disponibles. Crea una categoría primero."
+                )
+                return
+
+            # Mostrar dialog
+            from src.views.dialogs.save_snippet_dialog import SaveSnippetDialog
+
+            dialog = SaveSnippetDialog(
+                selected_text=selected_text,
+                categories=categories,
+                parent=self
+            )
+
+            if dialog.exec():
+                # Obtener datos del dialog
+                data = dialog.get_data()
+
+                # Guardar item en la base de datos
+                item_id = self.db.add_item(
+                    category_id=data['category_id'],
+                    label=data['label'],
+                    content=data['content'],
+                    item_type=data['type'],
+                    description=data['description'],
+                    tags=data['tags']
+                )
+
+                if item_id:
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self,
+                        "Éxito",
+                        f"Snippet guardado exitosamente:\n\n{data['label']}\nTipo: {data['type']}"
+                    )
+                    logger.info(f"Snippet guardado como item: {data['label']} (ID: {item_id}, Tipo: {data['type']})")
+                else:
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.warning(
+                        self,
+                        "Error",
+                        "No se pudo guardar el snippet en la base de datos"
+                    )
+
+        except Exception as e:
+            logger.error(f"Error al guardar snippet como item: {e}", exc_info=True)
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al guardar snippet:\n{str(e)}"
             )
 
     def _restore_session_tabs(self, tabs_data: list):
