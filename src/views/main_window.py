@@ -237,6 +237,7 @@ class MainWindow(QMainWindow):
                         self.floating_panel.window_closed.connect(self.on_floating_panel_closed)
                         self.floating_panel.pin_state_changed.connect(self.on_panel_pin_changed)
                         self.floating_panel.customization_requested.connect(self.on_panel_customization_requested)
+                        self.floating_panel.url_open_requested.connect(self.on_url_open_in_browser)
                         logger.debug("New floating panel created")
 
                     # Load category into floating panel
@@ -285,6 +286,31 @@ class MainWindow(QMainWindow):
                 self.pinned_panels.remove(sender_panel)
                 sender_panel.deleteLater()
                 logger.info(f"Pinned panel removed. Remaining pinned panels: {len(self.pinned_panels)}")
+
+    def on_url_open_in_browser(self, url: str):
+        """Handle URL open request - open in embedded browser"""
+        logger.info(f"Opening URL in embedded browser: {url}")
+
+        if self.controller and hasattr(self.controller, 'browser_manager'):
+            try:
+                # Show browser if not visible or doesn't exist
+                browser_manager = self.controller.browser_manager
+
+                if not browser_manager.browser_window or not browser_manager.browser_window.isVisible():
+                    browser_manager.show_browser()
+                    logger.info("Browser opened")
+
+                # Load URL in browser
+                if browser_manager.browser_window:
+                    browser_manager.browser_window.load_url(url)
+                    logger.info(f"URL loaded successfully: {url}")
+                else:
+                    logger.warning("Browser window not available")
+
+            except Exception as e:
+                logger.error(f"Error opening URL in browser: {e}", exc_info=True)
+        else:
+            logger.warning("Browser manager not available")
 
     def on_panel_pin_changed(self, is_pinned):
         """Handle when a panel's pin state changes"""
@@ -1307,6 +1333,7 @@ class MainWindow(QMainWindow):
                     restored_panel.window_closed.connect(self.on_floating_panel_closed)
                     restored_panel.pin_state_changed.connect(self.on_panel_pin_changed)
                     restored_panel.customization_requested.connect(self.on_panel_customization_requested)
+                    restored_panel.url_open_requested.connect(self.on_url_open_in_browser)
 
                     # Load category
                     restored_panel.load_category(category)

@@ -28,6 +28,7 @@ class ItemButton(QFrame):
     # Signals
     item_clicked = pyqtSignal(object)
     favorite_toggled = pyqtSignal(int, bool)  # item_id, is_favorite
+    url_open_requested = pyqtSignal(str)  # url to open in embedded browser
 
     def __init__(self, item: Item, show_category: bool = False, parent=None):
         super().__init__(parent)
@@ -408,7 +409,7 @@ class ItemButton(QFrame):
             self.start_clipboard_clear_timer()
 
     def open_in_browser(self):
-        """Open URL in default browser"""
+        """Open URL in embedded browser"""
         if self.item.type == ItemType.URL:
             # Track execution start
             start_time = self.usage_tracker.track_execution_start(self.item.id)
@@ -424,9 +425,10 @@ class ItemButton(QFrame):
                     else:
                         url = 'https://' + url
 
-                # Open in browser
-                webbrowser.open(url)
+                # Emit signal to open in embedded browser
+                self.url_open_requested.emit(url)
                 success = True
+                logger.info(f"URL open requested in embedded browser: {url}")
 
                 # Update button style briefly to show it was clicked
                 original_style = self.open_url_button.styleSheet()

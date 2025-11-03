@@ -34,7 +34,8 @@
       "Bash(timeout:*)",
       "Bash(nul)",
       "Bash(copy .env backup_2025-11-01_23-25-09.env)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

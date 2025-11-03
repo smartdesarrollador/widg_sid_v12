@@ -42,6 +42,9 @@ class FloatingPanel(QWidget):
     # Signal emitted when customization is requested
     customization_requested = pyqtSignal()
 
+    # Signal emitted when URL should be opened in embedded browser
+    url_open_requested = pyqtSignal(str)
+
     def __init__(self, config_manager=None, list_controller=None, panel_id=None, custom_name=None, custom_color=None, parent=None):
         super().__init__(parent)
         self.current_category = None
@@ -469,6 +472,7 @@ class FloatingPanel(QWidget):
             logger.debug(f"Creating button {idx+1}/{len(items)}: {item.label}")
             item_button = ItemButton(item)
             item_button.item_clicked.connect(self.on_item_clicked)
+            item_button.url_open_requested.connect(self.on_url_open_requested)
             self.items_layout.insertWidget(self.items_layout.count() - 1, item_button)
 
         logger.info(f"Successfully added {len(items)} item buttons to layout")
@@ -506,6 +510,7 @@ class FloatingPanel(QWidget):
                 logger.debug(f"Creating item button {idx+1}/{len(items)}: {item.label}")
                 item_button = ItemButton(item)
                 item_button.item_clicked.connect(self.on_item_clicked)
+                item_button.url_open_requested.connect(self.on_url_open_requested)
                 self.items_layout.insertWidget(self.items_layout.count() - 1, item_button)
 
         # === SECCIÓN DE LISTAS ===
@@ -572,6 +577,12 @@ class FloatingPanel(QWidget):
         """Handle item click"""
         # Emit signal to parent
         self.item_clicked.emit(item)
+
+    def on_url_open_requested(self, url: str):
+        """Handle URL open request from ItemButton"""
+        logger.info(f"URL open requested: {url}")
+        # Forward signal to parent (MainWindow)
+        self.url_open_requested.emit(url)
 
     # ========== LIST WIDGET HANDLERS ==========
 
