@@ -4,10 +4,13 @@ Author: Widget Sidebar Team
 Date: 2025-11-02
 """
 
+import sys
 import logging
+import ctypes
+from ctypes import wintypes
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
-    QPushButton, QLabel
+    QPushButton, QLabel, QApplication
 )
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QTimer
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -15,15 +18,36 @@ from PyQt6.QtWebEngineCore import QWebEngineSettings
 
 logger = logging.getLogger(__name__)
 
+# ===========================================================================
+# Windows AppBar API Constants and Structures
+# ===========================================================================
+ABM_NEW = 0x00000000
+ABM_REMOVE = 0x00000001
+ABM_QUERYPOS = 0x00000002
+ABM_SETPOS = 0x00000003
+ABE_RIGHT = 2  # Lado derecho de la pantalla
+
+
+class APPBARDATA(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("hWnd", wintypes.HWND),
+        ("uCallbackMessage", wintypes.UINT),
+        ("uEdge", wintypes.UINT),
+        ("rc", wintypes.RECT),
+        ("lParam", wintypes.LPARAM),
+    ]
+
 
 class SimpleBrowserWindow(QWidget):
     """
-    Ventana flotante simple con QWebEngineView.
+    Ventana flotante con navegador embebido QWebEngineView.
 
     Características:
     - Una sola instancia de QWebEngineView
     - Barra de navegación mínima (URL + Reload)
-    - Ventana flotante (NO AppBar)
+    - Ventana AppBar que reserva espacio en el escritorio
+    - Ocupa toda la altura de la pantalla
     - Timeout de carga para prevenir cuelgues
     - Tema futurista simple
     """
@@ -41,6 +65,7 @@ class SimpleBrowserWindow(QWidget):
         super().__init__()
         self.url = url
         self.is_loading = False
+        self.appbar_registered = False  # Estado del AppBar
 
         logger.info(f"Inicializando SimpleBrowserWindow con URL: {url}")
 
@@ -63,7 +88,16 @@ class SimpleBrowserWindow(QWidget):
         )
 
         self.setWindowTitle("Widget Sidebar Browser")
-        self.resize(500, 700)  # Tamaño fijo inicial
+
+        # Calcular tamaño para ocupar toda la altura de la pantalla
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+
+        # Altura: 80% de la pantalla (igual que el sidebar)
+        window_height = int(screen_geometry.height() * 0.8)
+        window_width = 500  # Ancho configurable
+
+        self.resize(window_width, window_height)
 
     def _setup_ui(self):
         """Configura la interfaz de usuario."""
@@ -298,11 +332,90 @@ class SimpleBrowserWindow(QWidget):
         self.move(panel_x, panel_y)
         logger.debug(f"Navegador posicionado en ({panel_x}, {panel_y})")
 
+    # ==================== AppBar Management ====================
+
+    def register_appbar(self):
+        """
+        Registra la ventana como AppBar de Windows para reservar espacio permanentemente.
+        Esto empuja las ventanas maximizadas para que no cubran el navegador.
+        """
+        try:
+            if sys.platform != 'win32':
+                logger.warning("AppBar solo funciona en Windows")
+                return
+
+            if self.appbar_registered:
+                logger.debug("AppBar ya está registrada")
+                return
+
+            # Obtener handle de la ventana
+            hwnd = int(self.winId())
+
+            # Obtener geometría de la pantalla
+            screen = QApplication.primaryScreen()
+            screen_geometry = screen.availableGeometry()
+
+            # Crear estructura APPBARDATA
+            abd = APPBARDATA()
+            abd.cbSize = ctypes.sizeof(APPBARDATA)
+            abd.hWnd = hwnd
+            abd.uCallbackMessage = 0
+            abd.uEdge = ABE_RIGHT  # Lado derecho de la pantalla (junto al sidebar)
+
+            # Definir el rectángulo del AppBar (para ABE_RIGHT: desde el navegador hasta el borde derecho)
+            abd.rc.left = self.x()  # Borde izquierdo del navegador
+            abd.rc.top = screen_geometry.y()
+            abd.rc.right = screen_geometry.x() + screen_geometry.width()  # Borde derecho de la pantalla
+            abd.rc.bottom = screen_geometry.y() + screen_geometry.height()
+
+            # Registrar el AppBar
+            result = ctypes.windll.shell32.SHAppBarMessage(ABM_NEW, ctypes.byref(abd))
+            if result:
+                logger.info("Navegador registrado como AppBar - espacio reservado en el escritorio")
+                self.appbar_registered = True
+
+                # Consultar y establecer posición para reservar espacio
+                ctypes.windll.shell32.SHAppBarMessage(ABM_QUERYPOS, ctypes.byref(abd))
+                ctypes.windll.shell32.SHAppBarMessage(ABM_SETPOS, ctypes.byref(abd))
+            else:
+                logger.warning("No se pudo registrar el navegador como AppBar")
+
+        except Exception as e:
+            logger.error(f"Error al registrar navegador como AppBar: {e}")
+
+    def unregister_appbar(self):
+        """
+        Desregistra la ventana como AppBar al cerrar u ocultar.
+        Esto libera el espacio reservado en el escritorio.
+        """
+        try:
+            if not self.appbar_registered:
+                return
+
+            # Obtener handle de la ventana
+            hwnd = int(self.winId())
+
+            # Crear estructura APPBARDATA
+            abd = APPBARDATA()
+            abd.cbSize = ctypes.sizeof(APPBARDATA)
+            abd.hWnd = hwnd
+
+            # Desregistrar el AppBar
+            ctypes.windll.shell32.SHAppBarMessage(ABM_REMOVE, ctypes.byref(abd))
+            self.appbar_registered = False
+            logger.info("Navegador desregistrado como AppBar - espacio liberado")
+
+        except Exception as e:
+            logger.error(f"Error al desregistrar navegador como AppBar: {e}")
+
     # ==================== Eventos ====================
 
     def closeEvent(self, event):
         """Handler al cerrar la ventana."""
         logger.info("Cerrando SimpleBrowserWindow")
+
+        # Desregistrar AppBar antes de cerrar
+        self.unregister_appbar()
 
         # Detener carga si está en proceso
         if self.is_loading:

@@ -89,11 +89,17 @@ class SimpleBrowserManager:
         self.browser_window.raise_()
         self.browser_window.activateWindow()
 
+        # Registrar como AppBar para reservar espacio en el escritorio
+        self.browser_window.register_appbar()
+
         logger.info("Navegador mostrado")
 
     def hide_browser(self):
         """Oculta el navegador sin destruirlo."""
         if self.browser_window:
+            # Desregistrar AppBar para liberar espacio
+            self.browser_window.unregister_appbar()
+            # Ocultar ventana
             self.browser_window.hide()
             logger.info("Navegador ocultado")
 
@@ -104,10 +110,15 @@ class SimpleBrowserManager:
         Libera recursos de memoria.
         """
         if self.browser_window:
-            logger.info("Cerrando y destruyendo navegador")
-            self.browser_window.close()
-            self.browser_window.deleteLater()
-            self.browser_window = None
+            try:
+                logger.info("Cerrando y destruyendo navegador")
+                self.browser_window.close()
+                self.browser_window.deleteLater()
+            except RuntimeError:
+                # El objeto ya fue eliminado
+                logger.debug("Browser window already deleted")
+            finally:
+                self.browser_window = None
 
     def is_browser_visible(self) -> bool:
         """
