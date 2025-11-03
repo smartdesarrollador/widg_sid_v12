@@ -10,7 +10,7 @@ import ctypes
 from ctypes import wintypes
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
-    QPushButton, QLabel, QApplication
+    QPushButton, QLabel, QApplication, QTabWidget, QTabBar
 )
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QTimer
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -64,7 +64,6 @@ class SimpleBrowserWindow(QWidget):
         """
         super().__init__()
         self.url = url
-        self.is_loading = False
         self.appbar_registered = False  # Estado del AppBar
 
         # Variables para redimensionamiento
@@ -74,11 +73,15 @@ class SimpleBrowserWindow(QWidget):
         self.resize_start_width = None
         self.resize_start_x = None
 
+        # Sistema de pestañas
+        self.tabs = []  # Lista de QWebEngineView (una por pestaña)
+        self.tab_widget = None  # QTabWidget
+        self.is_loading = False  # Estado de carga
+
         logger.info(f"Inicializando SimpleBrowserWindow con URL: {url}")
 
         self._setup_window()
         self._setup_ui()
-        self._configure_webengine()
         self._setup_timer()
         self._apply_styles()
 
@@ -110,7 +113,7 @@ class SimpleBrowserWindow(QWidget):
         self.resize(window_width, window_height)
 
     def _setup_ui(self):
-        """Configura la interfaz de usuario."""
+        """Configura la interfaz de usuario con sistema de pestañas."""
         # Layout principal
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -120,17 +123,25 @@ class SimpleBrowserWindow(QWidget):
         nav_bar = self._create_nav_bar()
         main_layout.addLayout(nav_bar)
 
-        # QWebEngineView (navegador)
-        self.browser = QWebEngineView()
-        main_layout.addWidget(self.browser)
+        # QTabWidget para pestañas
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)  # Permitir cerrar pestañas
+        self.tab_widget.setMovable(True)  # Permitir mover pestañas
+        self.tab_widget.setDocumentMode(True)  # Apariencia más limpia
 
-        # Conectar señales
-        self.browser.loadStarted.connect(self._on_load_started)
-        self.browser.loadProgress.connect(self._on_load_progress)
-        self.browser.loadFinished.connect(self._on_load_finished)
-        self.browser.urlChanged.connect(self._on_url_changed)
+        # Conectar señales del tab widget
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
+        self.tab_widget.tabCloseRequested.connect(self._on_close_tab)
+
+        main_layout.addWidget(self.tab_widget)
+
+        # Botón "+" para agregar nueva pestaña (colocado en la esquina del tab widget)
+        self.tab_widget.setCornerWidget(self._create_new_tab_button())
 
         self.setLayout(main_layout)
+
+        # Crear primera pestaña con la URL inicial
+        self.add_new_tab(self.url, "Nueva pestaña")
 
     def _create_nav_bar(self) -> QHBoxLayout:
         """Crea la barra de navegación."""
@@ -166,32 +177,6 @@ class SimpleBrowserWindow(QWidget):
         nav_layout.addWidget(self.close_btn)
 
         return nav_layout
-
-    def _configure_webengine(self):
-        """Configura QWebEngineSettings."""
-        settings = self.browser.settings()
-
-        # Habilitar JavaScript (necesario para la mayoría de sitios)
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.JavascriptEnabled, True
-        )
-
-        # Deshabilitar plugins innecesarios para mejor performance
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.PluginsEnabled, False
-        )
-
-        # Habilitar local storage mínimo
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.LocalStorageEnabled, True
-        )
-
-        # Seguridad: no permitir acceso remoto desde contenido local
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False
-        )
-
-        logger.debug("QWebEngineSettings configurado")
 
     def _setup_timer(self):
         """Configura timer de timeout para prevenir cuelgues."""
@@ -244,17 +229,188 @@ class SimpleBrowserWindow(QWidget):
                 color: #00ff00;
                 font-size: 14px;
             }
+
+            /* Estilos para QTabWidget */
+            QTabWidget::pane {
+                background-color: #1a1a2e;
+                border: 1px solid #0f3460;
+                border-top: 2px solid #00d4ff;
+            }
+
+            QTabBar::tab {
+                background-color: #0f3460;
+                color: #00d4ff;
+                border: 1px solid #00d4ff;
+                border-bottom: none;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+                padding: 8px 12px;
+                margin-right: 2px;
+                font-size: 11px;
+                min-width: 100px;
+                max-width: 200px;
+            }
+
+            QTabBar::tab:selected {
+                background-color: #16213e;
+                border: 2px solid #00d4ff;
+                border-bottom: none;
+                color: #00d4ff;
+                font-weight: bold;
+            }
+
+            QTabBar::tab:hover:!selected {
+                background-color: #16213e;
+                border: 1px solid #00d4ff;
+            }
+
+            QTabBar::close-button {
+                image: none;
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px 2px;
+            }
+
+            QTabBar::close-button:hover {
+                background-color: #ff0000;
+                border-radius: 3px;
+            }
+
+            /* Botón de cerrar pestaña personalizado */
+            QTabBar QToolButton {
+                background-color: transparent;
+                border: none;
+                color: #00d4ff;
+            }
+
+            QTabBar QToolButton:hover {
+                background-color: rgba(255, 0, 0, 0.5);
+                border-radius: 3px;
+            }
         """)
+
+    # ==================== Sistema de Pestañas ====================
+
+    def _create_new_tab_button(self) -> QPushButton:
+        """Crea el botón '+' para agregar nuevas pestañas."""
+        new_tab_btn = QPushButton("+")
+        new_tab_btn.setFixedSize(30, 30)
+        new_tab_btn.setToolTip("Nueva pestaña")
+        new_tab_btn.clicked.connect(lambda: self.add_new_tab("https://www.google.com", "Nueva pestaña"))
+        new_tab_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0f3460;
+                color: #00d4ff;
+                border: 1px solid #00d4ff;
+                border-radius: 5px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #16213e;
+                border: 2px solid #00d4ff;
+            }
+        """)
+        return new_tab_btn
+
+    def add_new_tab(self, url: str = "https://www.google.com", title: str = "Nueva pestaña"):
+        """
+        Agrega una nueva pestaña al navegador.
+
+        Args:
+            url: URL inicial de la pestaña
+            title: Título de la pestaña
+        """
+        # Crear nuevo QWebEngineView
+        browser = QWebEngineView()
+
+        # Configurar el navegador
+        settings = browser.settings()
+        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
+
+        # Conectar señales
+        browser.loadStarted.connect(lambda: self._on_load_started())
+        browser.loadProgress.connect(lambda progress: self._on_load_progress(progress))
+        browser.loadFinished.connect(lambda success: self._on_load_finished(success))
+        browser.urlChanged.connect(lambda url: self._on_url_changed(url))
+        browser.titleChanged.connect(lambda title: self._on_title_changed(title))
+
+        # Agregar a la lista de pestañas
+        self.tabs.append(browser)
+
+        # Agregar pestaña al widget
+        tab_index = self.tab_widget.addTab(browser, title)
+
+        # Activar la nueva pestaña
+        self.tab_widget.setCurrentIndex(tab_index)
+
+        # Cargar URL
+        if url:
+            browser.setUrl(QUrl(url if url.startswith(('http://', 'https://')) else 'https://' + url))
+
+        logger.info(f"Nueva pestaña agregada: {title} ({url})")
+
+    def _on_tab_changed(self, index: int):
+        """Handler cuando cambia la pestaña activa."""
+        if index >= 0 and index < len(self.tabs):
+            browser = self.tabs[index]
+            # Actualizar barra de URL con la URL de la pestaña activa
+            current_url = browser.url().toString()
+            if current_url:
+                self.url_bar.setText(current_url)
+            logger.debug(f"Pestaña activa cambiada a índice {index}")
+
+    def _on_close_tab(self, index: int):
+        """
+        Handler para cerrar una pestaña.
+
+        Args:
+            index: Índice de la pestaña a cerrar
+        """
+        if self.tab_widget.count() == 1:
+            # Si es la última pestaña, no permitir cerrarla (o cerrar la ventana)
+            logger.warning("No se puede cerrar la última pestaña")
+            return
+
+        # Remover de la lista
+        if 0 <= index < len(self.tabs):
+            browser = self.tabs.pop(index)
+            browser.deleteLater()
+
+        # Remover del widget
+        self.tab_widget.removeTab(index)
+
+        logger.info(f"Pestaña cerrada en índice {index}")
+
+    def get_current_browser(self) -> QWebEngineView:
+        """
+        Obtiene el QWebEngineView de la pestaña actualmente activa.
+
+        Returns:
+            QWebEngineView de la pestaña activa, o None si no hay pestañas
+        """
+        current_index = self.tab_widget.currentIndex()
+        if 0 <= current_index < len(self.tabs):
+            return self.tabs[current_index]
+        return None
 
     # ==================== Métodos Públicos ====================
 
     def load_url(self, url: str):
         """
-        Carga una URL en el navegador.
+        Carga una URL en la pestaña activa.
 
         Args:
             url: URL a cargar
         """
+        browser = self.get_current_browser()
+        if not browser:
+            return
+
         # Asegurar que la URL tenga protocolo
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
@@ -264,13 +420,15 @@ class SimpleBrowserWindow(QWidget):
         # Iniciar timer de timeout (10 segundos)
         self.load_timer.start(10000)
 
-        # Cargar URL
-        self.browser.setUrl(QUrl(url))
+        # Cargar URL en la pestaña activa
+        browser.setUrl(QUrl(url))
 
     def reload_page(self):
-        """Recarga la página actual."""
-        logger.info("Recargando página")
-        self.browser.reload()
+        """Recarga la página de la pestaña activa."""
+        browser = self.get_current_browser()
+        if browser:
+            logger.info("Recargando página")
+            browser.reload()
 
     # ==================== Slots ====================
 
@@ -312,11 +470,27 @@ class SimpleBrowserWindow(QWidget):
         self.url_bar.setText(url.toString())
         logger.debug(f"URL cambiada a: {url.toString()}")
 
+    def _on_title_changed(self, title: str):
+        """
+        Handler cuando cambia el título de una página.
+        Actualiza el título de la pestaña correspondiente.
+        """
+        # Encontrar qué pestaña emitió la señal
+        sender_browser = self.sender()
+        if sender_browser in self.tabs:
+            index = self.tabs.index(sender_browser)
+            # Limitar el título a 20 caracteres para que no sea muy largo
+            short_title = title[:20] + "..." if len(title) > 20 else title
+            self.tab_widget.setTabText(index, short_title or "Nueva pestaña")
+            logger.debug(f"Título de pestaña {index} actualizado a: {short_title}")
+
     def _on_load_timeout(self):
         """Handler para timeout de carga."""
         if self.is_loading:
             logger.warning("Timeout de carga alcanzado")
-            self.browser.stop()
+            browser = self.get_current_browser()
+            if browser:
+                browser.stop()
             self.status_label.setText("●")
             self.status_label.setStyleSheet("color: #ff0000;")
             self.reload_btn.setEnabled(True)
@@ -501,9 +675,13 @@ class SimpleBrowserWindow(QWidget):
         # Desregistrar AppBar antes de cerrar
         self.unregister_appbar()
 
-        # Detener carga si está en proceso
+        # Detener carga en todas las pestañas si está en proceso
         if self.is_loading:
-            self.browser.stop()
+            for browser in self.tabs:
+                try:
+                    browser.stop()
+                except:
+                    pass
 
         # Emitir señal
         self.closed.emit()
