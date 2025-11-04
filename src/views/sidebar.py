@@ -578,20 +578,16 @@ class Sidebar(QWidget):
             self.notebook_window.closed.connect(self.on_notebook_closed)
             self.notebook_window.tab_saved_as_item.connect(self.on_item_saved_from_notebook)
 
-            # Reservar espacio si está configurado
-            self.reserve_workarea_space()
-
+            # El AppBar se registra automáticamente en showEvent del NotebookWindow
             self.notebook_window.show()
         else:
             if self.notebook_window.isVisible():
+                # El AppBar se desregistra automáticamente en hideEvent
                 self.notebook_window.hide()
-                # Restaurar espacio
-                self.restore_workarea_space()
             else:
                 self.notebook_window.show()
                 self.position_notebook_window()
-                # Reservar espacio
-                self.reserve_workarea_space()
+                # El AppBar se registra automáticamente en showEvent
 
     def position_notebook_window(self):
         """Posicionar notebook al lado del sidebar"""
@@ -617,10 +613,10 @@ class Sidebar(QWidget):
 
     def on_notebook_closed(self):
         """Cuando se cierra/oculta la ventana de notebook"""
-        # Restaurar espacio (pero mantener la referencia de la ventana)
-        self.restore_workarea_space()
+        # El AppBar se desregistra automáticamente en hideEvent del NotebookWindow
         # NO destruir la referencia - la ventana solo está oculta, no cerrada
         # self.notebook_window = None  # Comentado: mantener instancia para reutilizar
+        pass
 
     def on_item_saved_from_notebook(self, data):
         """Cuando se guarda un item desde el notebook"""
@@ -628,47 +624,13 @@ class Sidebar(QWidget):
         # Esto se puede conectar con el main window para refrescar la categoría actual
         pass
 
-    def reserve_workarea_space(self):
-        """Reservar espacio en el escritorio de Windows para el notebook"""
-        if not self.controller:
-            return
-
-        # Verificar si está habilitado en settings
-        try:
-            reserve_enabled = self.controller.config_manager.get_setting(
-                'notebook_reserve_workspace', 'false'
-            )
-
-            if reserve_enabled.lower() != 'true':
-                return
-
-            # Calcular espacio total: sidebar (70px) + notebook (450px) + separación (10px)
-            total_width = 70 + 450 + 10 + 10  # +10 extra de margen
-
-            # Reservar espacio en el lado derecho
-            success = self.controller.workarea_manager.reserve_space_right(total_width)
-
-            if success:
-                print(f"[Workarea] Espacio reservado: {total_width}px en el lado derecho")
-            else:
-                print("[Workarea] No se pudo reservar espacio")
-
-        except Exception as e:
-            print(f"[Workarea] Error al reservar espacio: {e}")
-
-    def restore_workarea_space(self):
-        """Restaurar el área de trabajo original"""
-        if not self.controller:
-            return
-
-        try:
-            # Restaurar área de trabajo
-            success = self.controller.workarea_manager.restore_workarea()
-
-            if success:
-                print("[Workarea] Área de trabajo restaurada")
-            else:
-                print("[Workarea] No se pudo restaurar área de trabajo")
-
-        except Exception as e:
-            print(f"[Workarea] Error al restaurar espacio: {e}")
+    # NOTA: Estos métodos ya no se usan - el Notebook ahora usa AppBar directamente
+    # def reserve_workarea_space(self):
+    #     """Reservar espacio en el escritorio de Windows para el notebook"""
+    #     # Ya no se usa - AppBar se registra automáticamente en NotebookWindow.showEvent()
+    #     pass
+    #
+    # def restore_workarea_space(self):
+    #     """Restaurar el área de trabajo original"""
+    #     # Ya no se usa - AppBar se desregistra automáticamente en NotebookWindow.hideEvent()
+    #     pass

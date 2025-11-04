@@ -2,6 +2,9 @@
 NotebookWindow - Ventana principal del bloc de notas con pestañas
 """
 
+import sys
+import ctypes
+from ctypes import wintypes
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QPushButton, QLabel, QMessageBox, QApplication
@@ -12,6 +15,26 @@ from views.widgets.notebook_tab import NotebookTab
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ===========================================================================
+# Windows AppBar API Constants and Structures
+# ===========================================================================
+ABM_NEW = 0x00000000
+ABM_REMOVE = 0x00000001
+ABM_QUERYPOS = 0x00000002
+ABM_SETPOS = 0x00000003
+ABE_RIGHT = 2  # Lado derecho de la pantalla
+
+
+class APPBARDATA(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("hWnd", wintypes.HWND),
+        ("uCallbackMessage", wintypes.UINT),
+        ("uEdge", wintypes.UINT),
+        ("rc", wintypes.RECT),
+        ("lParam", wintypes.LPARAM),
+    ]
 
 # Constantes
 NOTEBOOK_WIDTH = 450
@@ -31,6 +54,7 @@ class NotebookWindow(QWidget):
         super().__init__(parent)
         self.controller = controller
         self.notebook_manager = controller.notebook_manager
+        self.appbar_registered = False  # Estado del AppBar
 
         # Para dragging de ventana
         self.drag_position = QPoint()
@@ -386,12 +410,28 @@ class NotebookWindow(QWidget):
         if saved_count > 0:
             logger.debug(f"Auto-saved {saved_count} tabs")
 
+    def showEvent(self, event):
+        """Cuando la ventana se muestra, registrar AppBar"""
+        super().showEvent(event)
+        # Registrar AppBar con un pequeño delay para asegurar que la ventana esté completamente visible
+        QTimer.singleShot(100, self.register_appbar)
+        logger.debug("NotebookWindow shown - registering AppBar")
+
+    def hideEvent(self, event):
+        """Cuando la ventana se oculta, desregistrar AppBar"""
+        self.unregister_appbar()
+        super().hideEvent(event)
+        logger.debug("NotebookWindow hidden - unregistering AppBar")
+
     def closeEvent(self, event):
         """Al cerrar, ocultar ventana en lugar de destruirla (comportamiento como navegador embebido)"""
         logger.info("NotebookWindow close requested - hiding instead of closing")
 
         # Auto-guardar todas las tabs
         self.autosave_all_tabs()
+
+        # Desregistrar AppBar antes de ocultar
+        self.unregister_appbar()
 
         # Emitir señal para que sidebar maneje el cierre
         self.closed.emit()
@@ -513,3 +553,79 @@ class NotebookWindow(QWidget):
                 background-color: #005A9E;
             }
         """)
+
+    # === WINDOWS APPBAR (RESERVA DE ESPACIO) ===
+
+    def register_appbar(self):
+        """
+        Registra la ventana como AppBar de Windows para reservar espacio permanentemente.
+        Esto empuja las ventanas maximizadas para que no cubran el notebook.
+        """
+        try:
+            if sys.platform != 'win32':
+                logger.warning("AppBar solo funciona en Windows")
+                return
+
+            if self.appbar_registered:
+                logger.debug("AppBar ya está registrada")
+                return
+
+            # Obtener handle de la ventana
+            hwnd = int(self.winId())
+
+            # Obtener geometría de la pantalla
+            screen = QApplication.primaryScreen()
+            screen_geometry = screen.availableGeometry()
+
+            # Crear estructura APPBARDATA
+            abd = APPBARDATA()
+            abd.cbSize = ctypes.sizeof(APPBARDATA)
+            abd.hWnd = hwnd
+            abd.uCallbackMessage = 0
+            abd.uEdge = ABE_RIGHT  # Lado derecho de la pantalla (junto al sidebar)
+
+            # Definir el rectángulo del AppBar (para ABE_RIGHT: desde el notebook hasta el borde derecho)
+            abd.rc.left = self.x()  # Borde izquierdo del notebook
+            abd.rc.top = screen_geometry.y()
+            abd.rc.right = screen_geometry.x() + screen_geometry.width()  # Borde derecho de la pantalla
+            abd.rc.bottom = screen_geometry.y() + screen_geometry.height()
+
+            # Registrar el AppBar
+            result = ctypes.windll.shell32.SHAppBarMessage(ABM_NEW, ctypes.byref(abd))
+            if result:
+                logger.info("Notebook registrado como AppBar - espacio reservado en el escritorio")
+                self.appbar_registered = True
+
+                # Consultar y establecer posición para reservar espacio
+                ctypes.windll.shell32.SHAppBarMessage(ABM_QUERYPOS, ctypes.byref(abd))
+                ctypes.windll.shell32.SHAppBarMessage(ABM_SETPOS, ctypes.byref(abd))
+            else:
+                logger.warning("No se pudo registrar el notebook como AppBar")
+
+        except Exception as e:
+            logger.error(f"Error al registrar notebook como AppBar: {e}")
+
+    def unregister_appbar(self):
+        """
+        Desregistra la ventana como AppBar al cerrar u ocultar.
+        Esto libera el espacio reservado en el escritorio.
+        """
+        try:
+            if not self.appbar_registered:
+                return
+
+            # Obtener handle de la ventana
+            hwnd = int(self.winId())
+
+            # Crear estructura APPBARDATA
+            abd = APPBARDATA()
+            abd.cbSize = ctypes.sizeof(APPBARDATA)
+            abd.hWnd = hwnd
+
+            # Desregistrar el AppBar
+            ctypes.windll.shell32.SHAppBarMessage(ABM_REMOVE, ctypes.byref(abd))
+            self.appbar_registered = False
+            logger.info("Notebook desregistrado como AppBar - espacio liberado")
+
+        except Exception as e:
+            logger.error(f"Error al desregistrar notebook como AppBar: {e}")
