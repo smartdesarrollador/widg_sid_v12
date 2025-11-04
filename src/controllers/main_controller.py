@@ -11,6 +11,8 @@ from core.clipboard_manager import ClipboardManager
 from core.category_filter_engine import CategoryFilterEngine
 from core.pinned_panels_manager import PinnedPanelsManager
 from core.simple_browser_manager import SimpleBrowserManager
+from core.notebook_manager import NotebookManager
+from core.workarea_manager import WorkareaManager
 from controllers.clipboard_controller import ClipboardController
 from controllers.list_controller import ListController
 from models.category import Category
@@ -30,6 +32,8 @@ class MainController:
         self.category_filter_engine = CategoryFilterEngine(db_path="widget_sidebar.db")
         self.pinned_panels_manager = PinnedPanelsManager(self.config_manager.db)
         self.browser_manager = SimpleBrowserManager(self.config_manager.db)
+        self.notebook_manager = NotebookManager(self.config_manager.db)
+        self.workarea_manager = WorkareaManager()
 
         # Initialize controllers
         self.clipboard_controller = ClipboardController(self.clipboard_manager)

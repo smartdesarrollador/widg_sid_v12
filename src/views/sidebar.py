@@ -39,6 +39,9 @@ class Sidebar(QWidget):
     # Signal emitted when global search button is clicked
     global_search_clicked = pyqtSignal()
 
+    # Signal emitted when notebook button is clicked
+    notebook_clicked = pyqtSignal()
+
     # Signal emitted when browser button is clicked
     browser_clicked = pyqtSignal()
 
@@ -48,6 +51,8 @@ class Sidebar(QWidget):
         self.active_button = None
         self.scroll_area = None
         self.theme = get_theme()  # Obtener tema futurista
+        self.notebook_window = None  # Reference to notebook window
+        self.controller = None  # Will be set later
 
         self.init_ui()
 
@@ -148,6 +153,40 @@ class Sidebar(QWidget):
         """)
         self.global_search_button.clicked.connect(self.on_global_search_clicked)
         main_layout.addWidget(self.global_search_button)
+
+        # Notebook button
+        self.notebook_button = QPushButton("📓")
+        self.notebook_button.setFixedSize(70, 40)
+        self.notebook_button.setToolTip("Bloc de Notas (Ctrl+Shift+N)")
+        self.notebook_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.notebook_button.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {self.theme.get_color('accent')},
+                    stop:1 {self.theme.get_color('primary')}
+                );
+                color: {self.theme.get_color('text_primary')};
+                border: none;
+                border-bottom: 2px solid {self.theme.get_color('background_deep')};
+                font-size: 14pt;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {self.theme.get_color('primary')},
+                    stop:1 {self.theme.get_color('secondary')}
+                );
+                border-bottom: 2px solid {self.theme.get_color('accent')};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.theme.get_color('surface')};
+                transform: scale(0.95);
+            }}
+        """)
+        self.notebook_button.clicked.connect(self.on_notebook_clicked)
+        main_layout.addWidget(self.notebook_button)
 
         # Category Filter button (FC)
         self.category_filter_button = QPushButton("🎯")
@@ -509,6 +548,127 @@ class Sidebar(QWidget):
         """Handle global search button click"""
         self.global_search_clicked.emit()
 
+    def on_notebook_clicked(self):
+        """Handle notebook button click"""
+        self.toggle_notebook()
+
     def on_dashboard_clicked(self):
         """Handle dashboard button click"""
         self.dashboard_clicked.emit()
+
+    def set_controller(self, controller):
+        """Set the main controller reference"""
+        self.controller = controller
+
+    def toggle_notebook(self):
+        """Abrir/cerrar ventana de notebook"""
+        if not self.controller:
+            print("Error: Controller not set")
+            return
+
+        if not hasattr(self, 'notebook_window') or self.notebook_window is None:
+            # Crear ventana
+            from views.notebook_window import NotebookWindow
+            self.notebook_window = NotebookWindow(self.controller)
+
+            # Posicionar al lado del sidebar
+            self.position_notebook_window()
+
+            # Conectar señales
+            self.notebook_window.closed.connect(self.on_notebook_closed)
+            self.notebook_window.tab_saved_as_item.connect(self.on_item_saved_from_notebook)
+
+            # Reservar espacio si está configurado
+            self.reserve_workarea_space()
+
+            self.notebook_window.show()
+        else:
+            if self.notebook_window.isVisible():
+                self.notebook_window.hide()
+                # Restaurar espacio
+                self.restore_workarea_space()
+            else:
+                self.notebook_window.show()
+                self.position_notebook_window()
+                # Reservar espacio
+                self.reserve_workarea_space()
+
+    def position_notebook_window(self):
+        """Posicionar notebook al lado del sidebar"""
+        if not hasattr(self, 'notebook_window') or self.notebook_window is None:
+            return
+
+        # Obtener geometría de la ventana principal (main window)
+        main_window = self.window()
+        if not main_window:
+            return
+
+        main_geo = main_window.geometry()
+
+        # Constantes del notebook
+        NOTEBOOK_WIDTH = 450
+
+        # Posicionar a la izquierda del sidebar
+        x = main_geo.x() - NOTEBOOK_WIDTH - 10  # 10px de separación
+        y = main_geo.y()
+        height = main_geo.height()
+
+        self.notebook_window.setGeometry(x, y, NOTEBOOK_WIDTH, height)
+
+    def on_notebook_closed(self):
+        """Cuando se cierra/oculta la ventana de notebook"""
+        # Restaurar espacio (pero mantener la referencia de la ventana)
+        self.restore_workarea_space()
+        # NO destruir la referencia - la ventana solo está oculta, no cerrada
+        # self.notebook_window = None  # Comentado: mantener instancia para reutilizar
+
+    def on_item_saved_from_notebook(self, data):
+        """Cuando se guarda un item desde el notebook"""
+        # Refrescar la vista si es necesario
+        # Esto se puede conectar con el main window para refrescar la categoría actual
+        pass
+
+    def reserve_workarea_space(self):
+        """Reservar espacio en el escritorio de Windows para el notebook"""
+        if not self.controller:
+            return
+
+        # Verificar si está habilitado en settings
+        try:
+            reserve_enabled = self.controller.config_manager.get_setting(
+                'notebook_reserve_workspace', 'false'
+            )
+
+            if reserve_enabled.lower() != 'true':
+                return
+
+            # Calcular espacio total: sidebar (70px) + notebook (450px) + separación (10px)
+            total_width = 70 + 450 + 10 + 10  # +10 extra de margen
+
+            # Reservar espacio en el lado derecho
+            success = self.controller.workarea_manager.reserve_space_right(total_width)
+
+            if success:
+                print(f"[Workarea] Espacio reservado: {total_width}px en el lado derecho")
+            else:
+                print("[Workarea] No se pudo reservar espacio")
+
+        except Exception as e:
+            print(f"[Workarea] Error al reservar espacio: {e}")
+
+    def restore_workarea_space(self):
+        """Restaurar el área de trabajo original"""
+        if not self.controller:
+            return
+
+        try:
+            # Restaurar área de trabajo
+            success = self.controller.workarea_manager.restore_workarea()
+
+            if success:
+                print("[Workarea] Área de trabajo restaurada")
+            else:
+                print("[Workarea] No se pudo restaurar área de trabajo")
+
+        except Exception as e:
+            print(f"[Workarea] Error al restaurar espacio: {e}")

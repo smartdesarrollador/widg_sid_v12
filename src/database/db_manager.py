@@ -2224,6 +2224,158 @@ class DBManager:
             logger.error(f"Error al renombrar sesión: {e}")
             return False
 
+    # ==================== NOTEBOOK TABS MANAGEMENT ====================
+
+    def get_notebook_tabs(self, order_by='position'):
+        """
+        Obtener todas las pestañas del notebook ordenadas
+
+        Args:
+            order_by: Campo por el cual ordenar (default: 'position')
+
+        Returns:
+            List[Dict]: Lista de pestañas
+        """
+        query = f"SELECT * FROM notebook_tabs ORDER BY {order_by} ASC"
+        return self.execute_query(query)
+
+    def get_notebook_tab(self, tab_id):
+        """
+        Obtener una pestaña específica
+
+        Args:
+            tab_id: ID de la pestaña
+
+        Returns:
+            Optional[Dict]: Datos de la pestaña o None
+        """
+        query = "SELECT * FROM notebook_tabs WHERE id = ?"
+        result = self.execute_query(query, (tab_id,))
+        return result[0] if result else None
+
+    def add_notebook_tab(self, title='Sin título', position=None):
+        """
+        Crear nueva pestaña del notebook
+
+        Args:
+            title: Título de la pestaña
+            position: Posición de la pestaña (auto-calculada si es None)
+
+        Returns:
+            int: ID de la pestaña creada
+        """
+        if position is None:
+            # Obtener última posición
+            result = self.execute_query(
+                "SELECT MAX(position) as max_pos FROM notebook_tabs"
+            )
+            max_pos = result[0]['max_pos'] if result and result[0]['max_pos'] is not None else -1
+            position = max_pos + 1
+
+        query = """
+            INSERT INTO notebook_tabs (title, position, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+        """
+        tab_id = self.execute_update(query, (title, position))
+        logger.info(f"Notebook tab created: '{title}' (ID: {tab_id}, position: {position})")
+        return tab_id
+
+    def update_notebook_tab(self, tab_id, **fields):
+        """
+        Actualizar campos de una pestaña del notebook
+
+        Args:
+            tab_id: ID de la pestaña
+            **fields: Campos a actualizar (title, content, category_id, item_type,
+                     tags, description, is_sensitive, is_active, is_archived, position)
+
+        Returns:
+            bool: True si se actualizó correctamente
+        """
+        allowed_fields = [
+            'title', 'content', 'category_id', 'item_type', 'tags',
+            'description', 'is_sensitive', 'is_active', 'is_archived', 'position'
+        ]
+
+        updates = []
+        values = []
+
+        for field, value in fields.items():
+            if field in allowed_fields:
+                updates.append(f"{field} = ?")
+                values.append(value)
+
+        if not updates:
+            logger.warning(f"No valid fields to update for notebook tab {tab_id}")
+            return False
+
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        values.append(tab_id)
+
+        query = f"UPDATE notebook_tabs SET {', '.join(updates)} WHERE id = ?"
+
+        try:
+            self.execute_update(query, tuple(values))
+            logger.debug(f"Notebook tab updated: ID {tab_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error updating notebook tab {tab_id}: {e}")
+            return False
+
+    def delete_notebook_tab(self, tab_id):
+        """
+        Eliminar una pestaña del notebook
+
+        Args:
+            tab_id: ID de la pestaña
+
+        Returns:
+            bool: True si se eliminó correctamente
+        """
+        query = "DELETE FROM notebook_tabs WHERE id = ?"
+        try:
+            self.execute_update(query, (tab_id,))
+            logger.info(f"Notebook tab deleted: ID {tab_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting notebook tab {tab_id}: {e}")
+            return False
+
+    def reorder_notebook_tabs(self, tab_ids_in_order):
+        """
+        Reordenar pestañas según lista de IDs
+
+        Args:
+            tab_ids_in_order: Lista de IDs en el orden deseado
+
+        Returns:
+            bool: True si se reordenó correctamente
+        """
+        try:
+            with self.transaction() as conn:
+                cursor = conn.cursor()
+                for position, tab_id in enumerate(tab_ids_in_order):
+                    cursor.execute(
+                        "UPDATE notebook_tabs SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        (position, tab_id)
+                    )
+            logger.info(f"Notebook tabs reordered: {len(tab_ids_in_order)} tabs")
+            return True
+        except Exception as e:
+            logger.error(f"Error reordering notebook tabs: {e}")
+            return False
+
+    def count_notebook_tabs(self):
+        """
+        Contar número de pestañas del notebook
+
+        Returns:
+            int: Número de pestañas
+        """
+        query = "SELECT COUNT(*) as count FROM notebook_tabs"
+        result = self.execute_query(query)
+        return result[0]['count'] if result else 0
+
     # ==================== Context Manager ====================
 
     def __enter__(self):

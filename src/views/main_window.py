@@ -182,6 +182,7 @@ class MainWindow(QMainWindow):
 
         # Create sidebar only (no embedded panel)
         self.sidebar = Sidebar()
+        self.sidebar.set_controller(self.controller)  # Set controller reference for notebook
         self.sidebar.category_clicked.connect(self.on_category_clicked)
         self.sidebar.global_search_clicked.connect(self.on_global_search_clicked)
         self.sidebar.favorites_clicked.connect(self.on_favorites_clicked)
@@ -795,10 +796,13 @@ class MainWindow(QMainWindow):
         # Register Ctrl+Shift+V to toggle window visibility
         self.hotkey_manager.register_hotkey("ctrl+shift+v", self.toggle_visibility)
 
+        # Register Ctrl+Shift+N to toggle notebook
+        self.hotkey_manager.register_hotkey("ctrl+shift+n", self.toggle_notebook)
+
         # Start listening for hotkeys
         self.hotkey_manager.start()
 
-        print("Hotkeys registered: Ctrl+Shift+V (toggle window)")
+        print("Hotkeys registered: Ctrl+Shift+V (toggle window), Ctrl+Shift+N (toggle notebook)")
 
     def setup_tray(self):
         """Setup system tray icon"""
@@ -826,6 +830,11 @@ class MainWindow(QMainWindow):
             self.hide_window()
         else:
             self.show_window()
+
+    def toggle_notebook(self):
+        """Toggle notebook window visibility (called by hotkey)"""
+        if self.sidebar:
+            self.sidebar.toggle_notebook()
 
     def show_window(self):
         """Show the window"""

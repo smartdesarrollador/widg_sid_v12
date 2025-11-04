@@ -35,7 +35,9 @@
       "Bash(nul)",
       "Bash(copy .env backup_2025-11-01_23-25-09.env)",
       "Bash(pip install:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(if not exist \"src\\database\\migrations\" mkdir \"src\\database\\migrations\")",
+      "Bash(if not exist \"tests\" mkdir \"tests\")"
     ],
     "deny": [],
     "ask": []
