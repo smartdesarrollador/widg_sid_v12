@@ -299,9 +299,12 @@ class GlobalSearchPanel(QWidget):
                         else:
                             # SQLite format
                             item.created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S')
+                        logger.debug(f"Parsed created_at for '{item.label}': {item.created_at}")
                     except (ValueError, TypeError) as e:
-                        logger.debug(f"Could not parse created_at '{item_dict.get('created_at')}': {e}")
+                        logger.warning(f"Could not parse created_at '{item_dict.get('created_at')}': {e}")
                         item.created_at = datetime.now()
+                else:
+                    logger.debug(f"Item '{item.label}' has no created_at in database")
 
                 if item_dict.get('last_used'):
                     try:
@@ -371,8 +374,13 @@ class GlobalSearchPanel(QWidget):
 
     def on_search_changed(self, query: str):
         """Handle search query change with filtering"""
+        logger.debug(f"on_search_changed called with query='{query}'")
+        logger.debug(f"Total items before filter: {len(self.all_items)}")
+        logger.debug(f"Current filters: {self.current_filters}")
+
         # Aplicar filtros avanzados primero
         filtered_items = self.filter_engine.apply_filters(self.all_items, self.current_filters)
+        logger.debug(f"Items after advanced filters: {len(filtered_items)}")
 
         # Luego aplicar búsqueda si hay query
         if query and query.strip():

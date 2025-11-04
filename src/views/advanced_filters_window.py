@@ -21,6 +21,7 @@ class AdvancedFiltersWindow(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.drag_position = None  # Inicializar posición de arrastre
         self.init_ui()
 
     def init_ui(self):
@@ -34,7 +35,7 @@ class AdvancedFiltersWindow(QWidget):
         )
 
         # Set window size
-        self.setFixedSize(400, 700)
+        self.setFixedSize(400, 800)  # Aumentado de 700 a 800
 
         # Set window opacity
         self.setWindowOpacity(0.95)
@@ -113,7 +114,7 @@ class AdvancedFiltersWindow(QWidget):
         # Forzar que el panel esté siempre expandido en esta ventana
         self.filter_panel.is_expanded = True
         self.filter_panel.expand_icon.setText("🔽")
-        self.filter_panel.content_widget.setMaximumHeight(650)
+        self.filter_panel.content_widget.setMaximumHeight(750)  # Aumentado de 650 a 750
 
         # Deshabilitar el click en el header (mantener siempre expandido)
         self.filter_panel.header_widget.mousePressEvent = lambda event: None

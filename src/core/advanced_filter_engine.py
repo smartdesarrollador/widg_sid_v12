@@ -47,6 +47,11 @@ class AdvancedFilterEngine:
                 "use_count": {"operator": ">", "value": 5}
             }
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.debug(f"apply_filters called with {len(items)} items and filters: {filters}")
+
         if not filters:
             return items
 
@@ -78,7 +83,10 @@ class AdvancedFilterEngine:
             filtered = self._filter_by_last_used(filtered, filters['last_used'])
 
         if 'created_at' in filters and filters['created_at']:
+            logger.debug(f"Applying created_at filter: {filters['created_at']}")
+            before_count = len(filtered)
             filtered = self._filter_by_created_date(filtered, filters['created_at'])
+            logger.debug(f"After created_at filter: {len(filtered)} items (was {before_count})")
 
         # Aplicar ordenamiento si se especifica
         if 'sort_by' in filters and filters['sort_by']:
@@ -326,6 +334,9 @@ class AdvancedFilterEngine:
         Returns:
             Items filtrados
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         if not date_filter:
             return items
 
@@ -339,6 +350,7 @@ class AdvancedFilterEngine:
                 start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             elif preset == 'this_week':
                 start_date = now - timedelta(days=now.weekday())
+                start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
             elif preset == 'this_month':
                 start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             elif preset == 'last_7_days':
@@ -348,20 +360,53 @@ class AdvancedFilterEngine:
             else:
                 return items
 
-            return [
-                item for item in items
-                if hasattr(item, 'created_at') and item.created_at >= start_date
-            ]
+            logger.debug(f"Date filter preset '{preset}': start_date={start_date}, now={now}")
+
+            filtered = []
+            for item in items:
+                if hasattr(item, 'created_at') and item.created_at:
+                    if item.created_at >= start_date:
+                        filtered.append(item)
+                        logger.debug(f"Item '{item.label}' included: created_at={item.created_at}")
+                    else:
+                        logger.debug(f"Item '{item.label}' excluded: created_at={item.created_at} < {start_date}")
+                else:
+                    logger.debug(f"Item '{item.label}' has no created_at attribute")
+
+            return filtered
 
         # Usar rango personalizado
         if 'custom_from' in date_filter and 'custom_to' in date_filter:
             from_date = date_filter['custom_from']
             to_date = date_filter['custom_to']
 
-            return [
-                item for item in items
-                if hasattr(item, 'created_at') and from_date <= item.created_at <= to_date
-            ]
+            logger.debug(f"Date filter custom range: from={from_date}, to={to_date}")
+
+            filtered = []
+            for item in items:
+                if hasattr(item, 'created_at') and item.created_at:
+                    # Asegurar que created_at es datetime
+                    item_date = item.created_at
+                    if isinstance(item_date, str):
+                        try:
+                            item_date = datetime.fromisoformat(item_date.replace('Z', '+00:00'))
+                        except:
+                            try:
+                                item_date = datetime.strptime(item_date, '%Y-%m-%d %H:%M:%S')
+                            except:
+                                logger.warning(f"Could not parse created_at for item '{item.label}': {item_date}")
+                                continue
+
+                    if from_date <= item_date <= to_date:
+                        filtered.append(item)
+                        logger.debug(f"Item '{item.label}' included: created_at={item_date}")
+                    else:
+                        logger.debug(f"Item '{item.label}' excluded: created_at={item_date} not in range [{from_date}, {to_date}]")
+                else:
+                    logger.debug(f"Item '{item.label}' has no created_at attribute")
+
+            logger.debug(f"Filtered {len(filtered)} items out of {len(items)}")
+            return filtered
 
         return items
 

@@ -79,7 +79,7 @@ class AdvancedFilterPanel(QWidget):
 
         # Altura del contenedor de filtros (0 cuando está colapsado)
         self.content_height = 0
-        self.max_content_height = 650  # Altura máxima cuando está expandido (aumentada para Fase 5)
+        self.max_content_height = 750  # Altura máxima cuando está expandido (aumentada de 650 a 750)
 
         self.init_ui()
 
@@ -768,9 +768,10 @@ class AdvancedFilterPanel(QWidget):
 
         # Contenedor para rango personalizado (inicialmente oculto)
         self.custom_range_container = QWidget()
+        self.custom_range_container.setMinimumHeight(100)  # Aumentado de 80 a 100
         custom_range_layout = QVBoxLayout(self.custom_range_container)
-        custom_range_layout.setContentsMargins(20, 5, 0, 5)
-        custom_range_layout.setSpacing(8)
+        custom_range_layout.setContentsMargins(20, 12, 0, 12)  # Más padding vertical
+        custom_range_layout.setSpacing(15)  # Más espacio entre campos (de 12 a 15)
 
         # Fecha desde
         from_layout = QHBoxLayout()
@@ -783,15 +784,16 @@ class AdvancedFilterPanel(QWidget):
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
         self.date_from.setDate(QDate.currentDate().addDays(-7))  # 7 días atrás por defecto
-        self.date_from.setFixedWidth(120)
+        self.date_from.setFixedWidth(140)  # Aumentado de 120 a 140
+        self.date_from.setMinimumHeight(28)  # Altura mínima para mejor visibilidad
         self.date_from.setStyleSheet("""
             QDateEdit {
                 background-color: #2d2d2d;
                 color: #cccccc;
                 border: 1px solid #3d3d3d;
                 border-radius: 3px;
-                padding: 4px 8px;
-                font-size: 9pt;
+                padding: 6px 8px;
+                font-size: 10pt;
             }
             QDateEdit:hover {
                 border: 1px solid #007acc;
@@ -823,15 +825,16 @@ class AdvancedFilterPanel(QWidget):
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
         self.date_to.setDate(QDate.currentDate())  # Hoy por defecto
-        self.date_to.setFixedWidth(120)
+        self.date_to.setFixedWidth(140)  # Aumentado de 120 a 140
+        self.date_to.setMinimumHeight(28)  # Altura mínima para mejor visibilidad
         self.date_to.setStyleSheet("""
             QDateEdit {
                 background-color: #2d2d2d;
                 color: #cccccc;
                 border: 1px solid #3d3d3d;
                 border-radius: 3px;
-                padding: 4px 8px;
-                font-size: 9pt;
+                padding: 6px 8px;
+                font-size: 10pt;
             }
             QDateEdit:hover {
                 border: 1px solid #007acc;
@@ -939,8 +942,8 @@ class AdvancedFilterPanel(QWidget):
         self.actions_buttons_widget.setMaximumHeight(0)  # Inicialmente colapsado
 
         buttons_layout = QHBoxLayout(self.actions_buttons_widget)
-        buttons_layout.setContentsMargins(8, 8, 8, 8)
-        buttons_layout.setSpacing(8)
+        buttons_layout.setContentsMargins(10, 10, 10, 10)  # Aumentado de 8 a 10
+        buttons_layout.setSpacing(10)  # Aumentado de 8 a 10
 
         # Botón: Limpiar Todo
         clear_all_btn = QPushButton("🗑️ Limpiar")
@@ -951,8 +954,8 @@ class AdvancedFilterPanel(QWidget):
                 color: #cccccc;
                 border: 1px solid #3d3d3d;
                 border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 9pt;
+                padding: 8px 14px;
+                font-size: 10pt;
             }
             QPushButton:hover {
                 background-color: #3d3d3d;
@@ -975,8 +978,8 @@ class AdvancedFilterPanel(QWidget):
                 color: #cccccc;
                 border: 1px solid #3d3d3d;
                 border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 9pt;
+                padding: 8px 14px;
+                font-size: 10pt;
             }
             QPushButton:hover {
                 background-color: #3d3d3d;
@@ -999,8 +1002,8 @@ class AdvancedFilterPanel(QWidget):
                 color: #ffffff;
                 border: none;
                 border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 9pt;
+                padding: 8px 14px;
+                font-size: 10pt;
             }
             QPushButton:hover {
                 background-color: #005a9e;
@@ -1024,7 +1027,7 @@ class AdvancedFilterPanel(QWidget):
         # Actualizar icono
         if self.actions_expanded:
             self.actions_icon.setText("▼")
-            target_height = 50  # Altura suficiente para los botones
+            target_height = 60  # Aumentado de 50 a 60 para más espacio
         else:
             self.actions_icon.setText("▶")
             target_height = 0
