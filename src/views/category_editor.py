@@ -378,7 +378,7 @@ class CategoryEditor(QWidget):
         self.delete_item_button.setEnabled(selected)
 
     def add_category(self):
-        """Add new category"""
+        """Add new category - saves directly to database"""
         name, ok = QInputDialog.getText(
             self,
             "Nueva Categoría",
@@ -389,36 +389,62 @@ class CategoryEditor(QWidget):
             logger.info("[ADD_CATEGORY] Dialog cancelled or empty name")
             return
 
-        # Create new category
-        category_id = f"custom_{uuid.uuid4().hex[:8]}"
-        order_idx = len(self.categories)
+        try:
+            logger.info(f"[ADD_CATEGORY] Creating new category: {name.strip()}")
 
-        logger.info(f"[ADD_CATEGORY] Creating new category:")
-        logger.info(f"  - Name: {name.strip()}")
-        logger.info(f"  - ID: {category_id}")
-        logger.info(f"  - Order index: {order_idx}")
+            # Save directly to database to get real ID
+            category_id = self.controller.config_manager.db.add_category(
+                name=name.strip(),
+                icon="📁",  # Default icon
+                is_predefined=False
+            )
 
-        new_category = Category(
-            category_id=category_id,
-            name=name.strip(),
-            icon="",
-            order_index=order_idx,
-            is_active=True,
-            is_predefined=False
-        )
+            if not category_id:
+                logger.error("[ADD_CATEGORY] Failed to create category in database")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"No se pudo crear la categoría '{name.strip()}' en la base de datos."
+                )
+                return
 
-        # Verify validation
-        is_valid = new_category.validate()
-        logger.info(f"  - Validation result: {is_valid}")
-        logger.info(f"  - ID set: {new_category.id}")
-        logger.info(f"  - Name set: {new_category.name}")
+            logger.info(f"[ADD_CATEGORY] Category created in database with ID: {category_id}")
 
-        self.categories.append(new_category)
-        logger.info(f"[ADD_CATEGORY] Category added to editor list. Total categories: {len(self.categories)}")
+            # Reload categories from database to get the new one with real ID
+            self.load_categories()
 
-        self.refresh_categories_list()
-        self.data_changed.emit()
-        logger.info("[ADD_CATEGORY] UI refreshed and data_changed signal emitted")
+            # Select the newly created category
+            for i in range(self.categories_list.count()):
+                item = self.categories_list.item(i)
+                category = item.data(Qt.ItemDataRole.UserRole)
+                if category and category.id == category_id:
+                    self.categories_list.setCurrentItem(item)
+                    logger.info(f"[ADD_CATEGORY] New category selected in UI")
+                    break
+
+            # Show success message
+            QMessageBox.information(
+                self,
+                "Éxito",
+                f"La categoría '{name.strip()}' se creó correctamente.\n\n"
+                f"ID: {category_id}\n"
+                f"Ahora puedes agregar items a esta categoría."
+            )
+
+            # Invalidate filter cache
+            if hasattr(self.controller, 'invalidate_filter_cache'):
+                self.controller.invalidate_filter_cache()
+
+            self.data_changed.emit()
+            logger.info("[ADD_CATEGORY] Category creation completed successfully")
+
+        except Exception as e:
+            logger.error(f"[ADD_CATEGORY] Error creating category: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al crear la categoría:\n{str(e)}"
+            )
 
     def delete_category(self):
         """Delete selected category"""
@@ -448,9 +474,25 @@ class CategoryEditor(QWidget):
 
         logger.info(f"[ADD_ITEM] Adding item to category: {self.current_category.name} (ID: {self.current_category.id})")
 
+        # Convert category_id to integer (needed for database FOREIGN KEY)
+        try:
+            category_id_int = int(self.current_category.id) if str(self.current_category.id).isdigit() else None
+        except (ValueError, TypeError):
+            category_id_int = None
+
+        if not category_id_int:
+            logger.error(f"[ADD_ITEM] Invalid category_id: {self.current_category.id}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"ID de categoría inválido: {self.current_category.id}\n\n"
+                "La categoría debe tener un ID numérico válido en la base de datos."
+            )
+            return
+
         # Open dialog with controller and category_id - saving happens in the dialog
         dialog = ItemEditorDialog(
-            category_id=self.current_category.id,
+            category_id=category_id_int,
             controller=self.controller,
             parent=self
         )
@@ -563,10 +605,26 @@ class CategoryEditor(QWidget):
         list_item = selected_items[0]
         item = list_item.data(Qt.ItemDataRole.UserRole)
 
+        # Convert category_id to integer (needed for database FOREIGN KEY)
+        try:
+            category_id_int = int(self.current_category.id) if str(self.current_category.id).isdigit() else None
+        except (ValueError, TypeError):
+            category_id_int = None
+
+        if not category_id_int:
+            logger.error(f"[EDIT_ITEM] Invalid category_id: {self.current_category.id}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"ID de categoría inválido: {self.current_category.id}\n\n"
+                "La categoría debe tener un ID numérico válido en la base de datos."
+            )
+            return
+
         # Open dialog with item and controller - saving happens in the dialog
         dialog = ItemEditorDialog(
             item=item,
-            category_id=self.current_category.id,
+            category_id=category_id_int,
             controller=self.controller,
             parent=self
         )
