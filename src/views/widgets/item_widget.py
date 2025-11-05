@@ -16,6 +16,7 @@ from models.item import Item, ItemType
 from core.usage_tracker import UsageTracker
 from core.favorites_manager import FavoritesManager
 from views.command_output_dialog import CommandOutputDialog
+from views.dialogs.item_details_dialog import ItemDetailsDialog
 import time
 import logging
 
@@ -218,6 +219,25 @@ class ItemButton(QFrame):
         self.favorite_btn.clicked.connect(self.toggle_favorite)
         self.update_favorite_button()
         main_layout.addWidget(self.favorite_btn)
+
+        # Info button (show details)
+        self.info_btn = QPushButton("ℹ️")
+        self.info_btn.setFixedSize(30, 30)
+        self.info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.info_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                font-size: 14pt;
+            }
+            QPushButton:hover {
+                background-color: #3e3e42;
+                border-radius: 3px;
+            }
+        """)
+        self.info_btn.setToolTip("Ver detalles del item")
+        self.info_btn.clicked.connect(self.show_details)
+        main_layout.addWidget(self.info_btn)
 
         # Reveal button for sensitive items
         if hasattr(self.item, 'is_sensitive') and self.item.is_sensitive:
@@ -794,6 +814,14 @@ class ItemButton(QFrame):
                 logger.debug(f"Error parsing last_used date: {e}")
 
         return " | ".join(parts) if parts else ""
+
+    def show_details(self):
+        """Mostrar ventana de detalles del item"""
+        try:
+            dialog = ItemDetailsDialog(self.item, parent=self.window())
+            dialog.exec()
+        except Exception as e:
+            logger.error(f"Error showing item details: {e}")
 
     def execute_command(self):
         """Ejecutar comando de tipo CODE"""
