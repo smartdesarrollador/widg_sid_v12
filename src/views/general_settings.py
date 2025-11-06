@@ -17,8 +17,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from views.dialogs.password_verify_dialog import PasswordVerifyDialog
-from views.dialogs.tag_groups_dialog import TagGroupsDialog
-from views.dialogs.smart_collections_dialog import SmartCollectionsDialog
 
 logger = logging.getLogger(__name__)
 
@@ -159,84 +157,6 @@ class GeneralSettings(QWidget):
 
         about_group.setLayout(about_layout)
         main_layout.addWidget(about_group)
-
-        # Tag Groups group
-        tag_groups_group = QGroupBox("🏷️ Grupos de Tags")
-        tag_groups_group.setStyleSheet(behavior_group.styleSheet())
-        tag_groups_layout = QVBoxLayout()
-        tag_groups_layout.setSpacing(10)
-
-        # Description
-        tag_groups_desc = QLabel(
-            "Gestiona plantillas de tags reutilizables para organizar tus items"
-        )
-        tag_groups_desc.setStyleSheet("color: #a0a0a0; font-size: 9pt;")
-        tag_groups_desc.setWordWrap(True)
-        tag_groups_layout.addWidget(tag_groups_desc)
-
-        # Button to open Tag Groups manager
-        manage_tag_groups_btn = QPushButton("📋 Gestionar Grupos de Tags")
-        manage_tag_groups_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0e639c;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 10px 16px;
-                font-size: 10pt;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1177bb;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
-        manage_tag_groups_btn.clicked.connect(self.open_tag_groups_dialog)
-        tag_groups_layout.addWidget(manage_tag_groups_btn)
-
-        tag_groups_group.setLayout(tag_groups_layout)
-        main_layout.addWidget(tag_groups_group)
-
-        # Smart Collections group
-        smart_collections_group = QGroupBox("🔍 Colecciones Inteligentes")
-        smart_collections_group.setStyleSheet(behavior_group.styleSheet())
-        smart_collections_layout = QVBoxLayout()
-        smart_collections_layout.setSpacing(10)
-
-        # Description
-        smart_collections_desc = QLabel(
-            "Crea filtros guardados que se actualizan automáticamente con los items que coinciden"
-        )
-        smart_collections_desc.setStyleSheet("color: #a0a0a0; font-size: 9pt;")
-        smart_collections_desc.setWordWrap(True)
-        smart_collections_layout.addWidget(smart_collections_desc)
-
-        # Button to open Smart Collections manager
-        manage_smart_collections_btn = QPushButton("📋 Gestionar Colecciones Inteligentes")
-        manage_smart_collections_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0e639c;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 10px 16px;
-                font-size: 10pt;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1177bb;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
-        manage_smart_collections_btn.clicked.connect(self.open_smart_collections_dialog)
-        smart_collections_layout.addWidget(manage_smart_collections_btn)
-
-        smart_collections_group.setLayout(smart_collections_layout)
-        main_layout.addWidget(smart_collections_group)
 
         # Spacer
         main_layout.addStretch()
@@ -419,31 +339,3 @@ class GeneralSettings(QWidget):
             "start_with_windows": self.start_windows_check.isChecked(),
             "max_history": self.max_history_spin.value()
         }
-
-    def open_tag_groups_dialog(self):
-        """Abrir el diálogo de gestión de Tag Groups"""
-        try:
-            logger.debug("Opening Tag Groups dialog")
-            dialog = TagGroupsDialog(self)
-            dialog.exec()
-        except Exception as e:
-            logger.error(f"Error opening Tag Groups dialog: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"No se pudo abrir el gestor de Tag Groups:\n{str(e)}"
-            )
-
-    def open_smart_collections_dialog(self):
-        """Abrir el diálogo de gestión de Smart Collections"""
-        try:
-            logger.debug("Opening Smart Collections dialog")
-            dialog = SmartCollectionsDialog(self)
-            dialog.exec()
-        except Exception as e:
-            logger.error(f"Error opening Smart Collections dialog: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"No se pudo abrir el gestor de Colecciones Inteligentes:\n{str(e)}"
-            )

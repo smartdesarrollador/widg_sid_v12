@@ -46,9 +46,10 @@ class TagGroupSelector(QWidget):
                 background-color: #3c3c3c;
                 border: 1px solid #5a5a5a;
                 border-radius: 4px;
-                padding: 6px;
+                padding: 3px 6px;
                 color: #cccccc;
-                min-height: 25px;
+                min-height: 20px;
+                font-size: 9pt;
             }
             QComboBox:hover {
                 border-color: #007acc;
@@ -72,11 +73,12 @@ class TagGroupSelector(QWidget):
             }
             QCheckBox {
                 color: #cccccc;
-                spacing: 6px;
+                spacing: 4px;
+                font-size: 9pt;
             }
             QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
+                width: 14px;
+                height: 14px;
                 border: 1px solid #5a5a5a;
                 border-radius: 3px;
                 background-color: #3c3c3c;
@@ -95,8 +97,9 @@ class TagGroupSelector(QWidget):
                 background-color: #3c3c3c;
                 border: 1px solid #5a5a5a;
                 border-radius: 4px;
-                padding: 6px;
+                padding: 3px 6px;
                 color: #cccccc;
+                font-size: 9pt;
             }
             QLineEdit:focus {
                 border-color: #007acc;
@@ -106,8 +109,8 @@ class TagGroupSelector(QWidget):
                 color: #cccccc;
                 border: 1px solid #5a5a5a;
                 border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 9pt;
+                padding: 3px 8px;
+                font-size: 8pt;
             }
             QPushButton:hover {
                 background-color: #505050;
@@ -117,7 +120,7 @@ class TagGroupSelector(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(4)
 
         # Container con borde para visualizar mejor
         container = QFrame()
@@ -127,21 +130,21 @@ class TagGroupSelector(QWidget):
                 background-color: #252526;
                 border: 1px solid #3e3e42;
                 border-radius: 6px;
-                padding: 12px;
+                padding: 6px;
             }
         """)
         container_layout = QVBoxLayout(container)
-        container_layout.setSpacing(12)
+        container_layout.setSpacing(6)
 
         # Header
         header_layout = QHBoxLayout()
         header_icon = QLabel("🏷️")
-        header_icon.setStyleSheet("font-size: 16pt;")
+        header_icon.setStyleSheet("font-size: 12pt;")
         header_layout.addWidget(header_icon)
 
         header_label = QLabel("Plantillas de Tags")
         header_font = QFont()
-        header_font.setPointSize(10)
+        header_font.setPointSize(9)
         header_font.setBold(True)
         header_label.setFont(header_font)
         header_layout.addWidget(header_label)
@@ -159,6 +162,7 @@ class TagGroupSelector(QWidget):
         # Selector de tag group
         selector_layout = QHBoxLayout()
         selector_label = QLabel("💡 Usar plantilla:")
+        selector_label.setStyleSheet("font-size: 9pt;")
         selector_layout.addWidget(selector_label)
 
         self.group_combo = QComboBox()
@@ -170,8 +174,8 @@ class TagGroupSelector(QWidget):
         # Área de checkboxes para tags del grupo
         self.tags_area = QWidget()
         self.tags_layout = QVBoxLayout(self.tags_area)
-        self.tags_layout.setSpacing(8)
-        self.tags_layout.setContentsMargins(10, 5, 10, 5)
+        self.tags_layout.setSpacing(4)
+        self.tags_layout.setContentsMargins(5, 2, 5, 2)
         container_layout.addWidget(self.tags_area)
 
         self.tags_area.hide()  # Ocultar inicialmente
@@ -184,7 +188,7 @@ class TagGroupSelector(QWidget):
 
         # Tags adicionales (custom)
         additional_label = QLabel("Tags adicionales (opcionales):")
-        additional_label.setStyleSheet("font-weight: bold; font-size: 9pt;")
+        additional_label.setStyleSheet("font-weight: bold; font-size: 8pt;")
         container_layout.addWidget(additional_label)
 
         self.additional_tags_input = QLineEdit()
@@ -194,14 +198,14 @@ class TagGroupSelector(QWidget):
 
         # Vista previa de tags finales
         preview_label = QLabel("Tags finales:")
-        preview_label.setStyleSheet("font-weight: bold; font-size: 9pt; margin-top: 5px;")
+        preview_label.setStyleSheet("font-weight: bold; font-size: 8pt; margin-top: 2px;")
         container_layout.addWidget(preview_label)
 
         self.preview_label = QLabel("(Ningún tag seleccionado)")
         self.preview_label.setStyleSheet("""
             color: #808080;
-            font-size: 9pt;
-            padding: 8px;
+            font-size: 8pt;
+            padding: 4px;
             background-color: #1e1e1e;
             border-radius: 4px;
             font-style: italic;
@@ -257,14 +261,15 @@ class TagGroupSelector(QWidget):
 
             # Crear checkboxes para cada tag
             instructions = QLabel("Selecciona los tags que necesites:")
-            instructions.setStyleSheet("font-size: 9pt; color: #a0a0a0; margin-bottom: 5px;")
+            instructions.setStyleSheet("font-size: 8pt; color: #a0a0a0; margin-bottom: 2px;")
             self.tags_layout.addWidget(instructions)
 
             # Crear grid layout para mejor distribución
             from PyQt6.QtWidgets import QGridLayout
             grid_widget = QWidget()
             grid_layout = QGridLayout(grid_widget)
-            grid_layout.setSpacing(8)
+            grid_layout.setSpacing(4)
+            grid_layout.setContentsMargins(0, 0, 0, 0)
 
             for idx, tag in enumerate(tags_list):
                 checkbox = QCheckBox(f"🏷️ {tag}")
@@ -341,8 +346,8 @@ class TagGroupSelector(QWidget):
             self.preview_label.setText("(Ningún tag seleccionado)")
             self.preview_label.setStyleSheet("""
                 color: #808080;
-                font-size: 9pt;
-                padding: 8px;
+                font-size: 8pt;
+                padding: 4px;
                 background-color: #1e1e1e;
                 border-radius: 4px;
                 font-style: italic;
@@ -355,8 +360,8 @@ class TagGroupSelector(QWidget):
             self.preview_label.setText(preview_text)
             self.preview_label.setStyleSheet("""
                 color: #cccccc;
-                font-size: 9pt;
-                padding: 8px;
+                font-size: 8pt;
+                padding: 4px;
                 background-color: #1e1e1e;
                 border: 1px solid #007acc;
                 border-radius: 4px;

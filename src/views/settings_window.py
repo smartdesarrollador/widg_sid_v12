@@ -20,6 +20,7 @@ from views.appearance_settings import AppearanceSettings
 from views.hotkey_settings import HotkeySettings
 from views.general_settings import GeneralSettings
 from views.browser_settings import BrowserSettings
+from views.organization_settings import OrganizationSettings
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class SettingsWindow(QDialog):
         """Initialize the UI"""
         # Window properties
         self.setWindowTitle("Configuración")
-        self.setFixedSize(600, 650)
+        self.setFixedSize(750, 650)
         self.setModal(True)
 
         # Apply dark theme
@@ -129,6 +130,7 @@ class SettingsWindow(QDialog):
         self.appearance_settings = AppearanceSettings(config_manager=self.config_manager)
         self.hotkey_settings = HotkeySettings(config_manager=self.config_manager)
         self.browser_settings = BrowserSettings(controller=self.controller)
+        self.organization_settings = OrganizationSettings(config_manager=self.config_manager)
         self.general_settings = GeneralSettings(config_manager=self.config_manager)
 
         # Add tabs
@@ -136,6 +138,7 @@ class SettingsWindow(QDialog):
         self.tab_widget.addTab(self.appearance_settings, "Apariencia")
         self.tab_widget.addTab(self.hotkey_settings, "Hotkeys")
         self.tab_widget.addTab(self.browser_settings, "Navegador")
+        self.tab_widget.addTab(self.organization_settings, "Organización")
         self.tab_widget.addTab(self.general_settings, "General")
 
         main_layout.addWidget(self.tab_widget)

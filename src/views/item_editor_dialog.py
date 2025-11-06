@@ -6,7 +6,7 @@ Dialog for creating and editing items
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QTextEdit, QComboBox, QPushButton, QFormLayout, QMessageBox, QCheckBox,
-    QFrame
+    QFrame, QScrollArea
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -127,8 +127,8 @@ class ItemEditorDialog(QDialog):
         self.setWindowTitle(title)
 
         # Hacer la ventana redimensionable
-        self.setMinimumSize(400, 500)  # Tamaño mínimo
-        self.resize(450, 570)  # Tamaño inicial
+        self.setMinimumSize(550, 500)  # Tamaño mínimo
+        self.resize(600, 570)  # Tamaño inicial
 
         self.setModal(True)
 
@@ -206,18 +206,55 @@ class ItemEditorDialog(QDialog):
         self.tags_input.setPlaceholderText("tag1, tag2, tag3 (opcional)")
         form_layout.addRow("Tags:", self.tags_input)
 
-        # Tag Group Selector (optional)
+        # Tag Group Selector (optional) - wrapped in scroll area
         if self.controller and hasattr(self.controller, 'config_manager'):
             try:
                 db_path = str(self.controller.config_manager.db.db_path)
                 self.tag_group_selector = TagGroupSelector(db_path, self)
                 self.tag_group_selector.tags_changed.connect(self.on_tag_group_changed)
-                form_layout.addRow("", self.tag_group_selector)
+
+                # Create scroll area for tag group selector
+                scroll_area = QScrollArea()
+                scroll_area.setWidget(self.tag_group_selector)
+                scroll_area.setWidgetResizable(True)
+                scroll_area.setFixedHeight(120)  # Fixed height with scroll
+                scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+                scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+                scroll_area.setStyleSheet("""
+                    QScrollArea {
+                        border: 1px solid #3d3d3d;
+                        border-radius: 4px;
+                        background-color: #2d2d2d;
+                    }
+                    QScrollBar:vertical {
+                        background-color: #2d2d2d;
+                        width: 12px;
+                        border-radius: 6px;
+                    }
+                    QScrollBar::handle:vertical {
+                        background-color: #5a5a5a;
+                        border-radius: 6px;
+                        min-height: 20px;
+                    }
+                    QScrollBar::handle:vertical:hover {
+                        background-color: #007acc;
+                    }
+                    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                        height: 0px;
+                    }
+                """)
+
+                form_layout.addRow("", scroll_area)
             except Exception as e:
                 logger.warning(f"Could not initialize TagGroupSelector: {e}")
                 self.tag_group_selector = None
         else:
             self.tag_group_selector = None
+
+        # Add vertical spacer after tag section
+        spacer_label = QLabel("")
+        spacer_label.setFixedHeight(25)
+        form_layout.addRow("", spacer_label)
 
         # Description field (optional)
         self.description_input = QLineEdit()
