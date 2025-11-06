@@ -1548,10 +1548,12 @@ class SimpleBrowserWindow(QWidget):
             # Mostrar dialog
             from src.views.dialogs.save_url_dialog import SaveUrlDialog
 
+            db_path = str(self.db.db_path) if hasattr(self.db, 'db_path') else None
             dialog = SaveUrlDialog(
                 current_url=current_url,
                 page_title=page_title,
                 categories=categories,
+                db_path=db_path,
                 parent=self
             )
 
