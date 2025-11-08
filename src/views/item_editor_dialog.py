@@ -719,6 +719,13 @@ class ItemEditorDialog(QDialog):
 
         # Validate PATH if type is PATH
         if selected_type == ItemType.PATH:
+            # Skip validation if there's a selected file pending to be copied
+            # (the file doesn't exist yet because it will be copied AFTER validation)
+            if self.selected_file_path and self.selected_file_metadata:
+                logger.info(f"[validate] Skipping path validation - file will be copied after validation")
+                return True
+
+            # Only validate if it's a manually entered path (no selected file)
             if not self.validate_path(content):
                 # Show warning but allow to save anyway
                 reply = QMessageBox.question(
@@ -756,10 +763,10 @@ class ItemEditorDialog(QDialog):
 
     def validate_path(self, path_str: str) -> bool:
         """
-        Validate if path exists
+        Validate if path exists (supports both absolute and relative paths)
 
         Args:
-            path_str: Path string to validate
+            path_str: Path string to validate (can be relative like "IMAGENES/file.jpg")
 
         Returns:
             True if path exists
@@ -767,8 +774,45 @@ class ItemEditorDialog(QDialog):
         try:
             from pathlib import Path
             path = Path(path_str)
-            return path.exists()
-        except Exception:
+
+            logger.info(f"[validate_path] Validating: '{path_str}'")
+            logger.info(f"[validate_path] Is absolute: {path.is_absolute()}")
+
+            # Si la ruta es absoluta, validar directamente
+            if path.is_absolute():
+                exists = path.exists()
+                logger.info(f"[validate_path] Absolute path exists: {exists}")
+                return exists
+
+            # Si es ruta relativa (formato: CARPETA/archivo.ext)
+            # Intentar construir ruta absoluta desde configuración
+            try:
+                logger.info(f"[validate_path] file_manager available: {self.file_manager is not None}")
+
+                if self.file_manager:
+                    absolute_path = self.file_manager.get_absolute_path(path_str)
+                    logger.info(f"[validate_path] Resolved to: '{absolute_path}'")
+
+                    exists = Path(absolute_path).exists()
+                    logger.info(f"[validate_path] Resolved path exists: {exists}")
+                    return exists
+                else:
+                    # Si no hay file_manager, asumir que es válida
+                    # (esto puede pasar si no se ha configurado la ruta base aún)
+                    logger.warning(f"[validate_path] No file_manager available to validate relative path: {path_str}")
+                    return True
+            except Exception as e:
+                logger.warning(f"[validate_path] Could not validate relative path '{path_str}': {e}")
+                import traceback
+                traceback.print_exc()
+                # Si no se puede resolver, asumir que es válida
+                # (el archivo puede haber sido guardado correctamente)
+                return True
+
+        except Exception as e:
+            logger.error(f"[validate_path] Error validating path '{path_str}': {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def get_item_data(self) -> dict:
