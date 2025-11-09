@@ -24,6 +24,7 @@ from views.dialogs.forgotten_items_dialog import ForgottenItemsDialog
 from views.dialogs.suggestions_dialog import FavoriteSuggestionsDialog
 from views.dialogs.stats_dashboard import StatsDashboard
 from views.dialogs.panel_config_dialog import PanelConfigDialog
+from views.dialogs.quick_create_dialog import QuickCreateDialog
 from views.category_filter_window import CategoryFilterWindow
 from models.item import Item
 from core.hotkey_manager import HotkeyManager
@@ -193,6 +194,7 @@ class MainWindow(QMainWindow):
         self.sidebar.settings_clicked.connect(self.open_settings)
         self.sidebar.category_filter_clicked.connect(self.on_category_filter_clicked)
         self.sidebar.refresh_clicked.connect(self.on_refresh_clicked)
+        self.sidebar.quick_create_clicked.connect(self.on_quick_create_clicked)
         main_layout.addWidget(self.sidebar)
 
     def load_categories(self, categories):
@@ -746,6 +748,56 @@ class MainWindow(QMainWindow):
         """Handle category filter window closed"""
         logger.info("Category filter window closed")
         # No eliminamos la ventana, solo la ocultamos para reutilizarla
+
+    def on_quick_create_clicked(self):
+        """Handle quick create button click - show quick create dialog"""
+        try:
+            logger.info("Quick create button clicked")
+
+            if not self.controller:
+                logger.error("No controller available")
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "No se pudo acceder al controlador."
+                )
+                return
+
+            # Create and show quick create dialog
+            quick_create_dialog = QuickCreateDialog(
+                controller=self.controller,
+                parent=self
+            )
+
+            # Connect data_changed signal to reload categories
+            quick_create_dialog.data_changed.connect(self.on_quick_create_data_changed)
+
+            # Show dialog (modal)
+            quick_create_dialog.exec()
+
+            logger.info("Quick create dialog closed")
+
+        except Exception as e:
+            logger.error(f"Error in on_quick_create_clicked: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al abrir creación rápida:\n{str(e)}"
+            )
+
+    def on_quick_create_data_changed(self):
+        """Handle data changed from quick create dialog - reload categories"""
+        try:
+            logger.info("Quick create data changed, reloading categories")
+
+            if self.controller:
+                # Reload categories from database
+                categories = self.controller.config_manager.get_categories()
+                self.load_categories(categories)
+                logger.info("Categories reloaded successfully")
+
+        except Exception as e:
+            logger.error(f"Error reloading categories after quick create: {e}", exc_info=True)
 
     def on_item_clicked(self, item: Item):
         """Handle item button click"""

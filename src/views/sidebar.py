@@ -51,6 +51,9 @@ class Sidebar(QWidget):
     # Signal emitted when refresh button is clicked
     refresh_clicked = pyqtSignal()
 
+    # Signal emitted when quick create button is clicked
+    quick_create_clicked = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.category_buttons = {}
@@ -263,6 +266,36 @@ class Sidebar(QWidget):
 
         self.scroll_area.setWidget(buttons_container)
         main_layout.addWidget(self.scroll_area)
+
+        # Quick Create button (➕)
+        self.quick_create_button = QPushButton("➕")
+        self.quick_create_button.setFixedSize(70, 40)
+        self.quick_create_button.setToolTip("Crear Item o Categoría")
+        self.quick_create_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.quick_create_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.theme.get_color('background_deep')};
+                color: #00d4ff;
+                border: none;
+                border-top: 2px solid {self.theme.get_color('surface')};
+                font-size: 16pt;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00d4ff,
+                    stop:1 #00ff88
+                );
+                color: #000000;
+            }}
+            QPushButton:pressed {{
+                background-color: {self.theme.get_color('surface')};
+                color: #00d4ff;
+            }}
+        """)
+        self.quick_create_button.clicked.connect(self.on_quick_create_clicked)
+        main_layout.addWidget(self.quick_create_button)
 
         # Scroll down button
         self.scroll_down_button = QPushButton("▼")
@@ -616,6 +649,10 @@ class Sidebar(QWidget):
     def on_refresh_clicked(self):
         """Handle refresh button click"""
         self.refresh_clicked.emit()
+
+    def on_quick_create_clicked(self):
+        """Handle quick create button click"""
+        self.quick_create_clicked.emit()
 
     def set_controller(self, controller):
         """Set the main controller reference"""

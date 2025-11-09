@@ -1,0 +1,319 @@
+"""
+Quick Create Dialog
+Dialog for quick creation of items or categories
+"""
+
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QMessageBox, QInputDialog, QComboBox
+)
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
+import sys
+from pathlib import Path
+import logging
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from views.item_editor_dialog import ItemEditorDialog
+
+logger = logging.getLogger(__name__)
+
+
+class QuickCreateDialog(QDialog):
+    """
+    Dialog for quick creation of items or categories
+    Shows two main options: Create Item and Create Category
+    """
+
+    # Signal emitted when data changes (item or category created)
+    data_changed = pyqtSignal()
+
+    def __init__(self, controller=None, parent=None):
+        """
+        Initialize quick create dialog
+
+        Args:
+            controller: MainController instance
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.controller = controller
+        self.init_ui()
+
+    def init_ui(self):
+        """Initialize the UI"""
+        self.setWindowTitle("Creación Rápida")
+        self.setFixedSize(400, 250)
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
+
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+
+        # Title
+        title_label = QLabel("¿Qué deseas crear?")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        main_layout.addWidget(title_label)
+
+        # Buttons layout
+        buttons_layout = QVBoxLayout()
+        buttons_layout.setSpacing(15)
+
+        # Create Item button
+        self.create_item_button = QPushButton("📝 Crear Item")
+        self.create_item_button.setFixedHeight(60)
+        self.create_item_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.create_item_button.clicked.connect(self.create_item)
+        buttons_layout.addWidget(self.create_item_button)
+
+        # Create Category button
+        self.create_category_button = QPushButton("📁 Crear Categoría")
+        self.create_category_button.setFixedHeight(60)
+        self.create_category_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.create_category_button.clicked.connect(self.create_category)
+        buttons_layout.addWidget(self.create_category_button)
+
+        main_layout.addLayout(buttons_layout)
+
+        self.setLayout(main_layout)
+        self.apply_styles()
+
+    def apply_styles(self):
+        """Apply styles to the dialog"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #1e1e1e;
+            }
+            QLabel {
+                color: #ffffff;
+            }
+            QPushButton {
+                background-color: #252525;
+                color: #ffffff;
+                border: 2px solid #00d4ff;
+                border-radius: 8px;
+                font-size: 14pt;
+                font-weight: bold;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00d4ff,
+                    stop:1 #00ff88
+                );
+                color: #000000;
+                border: 2px solid #00ff88;
+            }
+            QPushButton:pressed {
+                background-color: #00d4ff;
+                color: #000000;
+            }
+        """)
+
+    def create_item(self):
+        """Create a new item - first select category"""
+        if not self.controller:
+            QMessageBox.warning(
+                self,
+                "Error",
+                "No se pudo acceder al controlador."
+            )
+            return
+
+        try:
+            # Get all categories
+            categories = self.controller.config_manager.db.get_categories()
+
+            if not categories:
+                QMessageBox.information(
+                    self,
+                    "Sin Categorías",
+                    "No hay categorías disponibles. Crea una categoría primero."
+                )
+                return
+
+            # Create category selection dialog
+            category_dialog = QDialog(self)
+            category_dialog.setWindowTitle("Seleccionar Categoría")
+            category_dialog.setFixedSize(350, 150)
+
+            dialog_layout = QVBoxLayout()
+            dialog_layout.setSpacing(15)
+            dialog_layout.setContentsMargins(20, 20, 20, 20)
+
+            # Label
+            label = QLabel("Selecciona la categoría para el nuevo item:")
+            dialog_layout.addWidget(label)
+
+            # Category combo box
+            category_combo = QComboBox()
+            for category in categories:
+                # Handle both dict and object types
+                if isinstance(category, dict):
+                    cat_id = category['id']
+                    cat_name = category['name']
+                    cat_icon = category.get('icon', '📁')
+                else:
+                    cat_id = category.id
+                    cat_name = category.name
+                    cat_icon = getattr(category, 'icon', '📁')
+
+                category_combo.addItem(f"{cat_icon} {cat_name}", cat_id)
+
+            dialog_layout.addWidget(category_combo)
+
+            # Buttons
+            buttons_layout = QHBoxLayout()
+            ok_button = QPushButton("Aceptar")
+            cancel_button = QPushButton("Cancelar")
+
+            ok_button.clicked.connect(category_dialog.accept)
+            cancel_button.clicked.connect(category_dialog.reject)
+
+            buttons_layout.addWidget(ok_button)
+            buttons_layout.addWidget(cancel_button)
+            dialog_layout.addLayout(buttons_layout)
+
+            category_dialog.setLayout(dialog_layout)
+            category_dialog.setStyleSheet("""
+                QDialog {
+                    background-color: #1e1e1e;
+                }
+                QLabel {
+                    color: #ffffff;
+                    font-size: 10pt;
+                }
+                QComboBox {
+                    background-color: #252525;
+                    color: #ffffff;
+                    border: 1px solid #00d4ff;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-size: 10pt;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                }
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 6px solid #00d4ff;
+                    margin-right: 8px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #252525;
+                    color: #ffffff;
+                    selection-background-color: #00d4ff;
+                    selection-color: #000000;
+                    border: 1px solid #00d4ff;
+                }
+                QPushButton {
+                    background-color: #252525;
+                    color: #ffffff;
+                    border: 1px solid #00d4ff;
+                    border-radius: 4px;
+                    padding: 8px 16px;
+                    font-size: 10pt;
+                }
+                QPushButton:hover {
+                    background-color: #00d4ff;
+                    color: #000000;
+                }
+            """)
+
+            # Show category selection dialog
+            if category_dialog.exec() == QDialog.DialogCode.Accepted:
+                selected_category_id = category_combo.currentData()
+
+                # Open ItemEditorDialog
+                item_editor = ItemEditorDialog(
+                    item=None,  # New item
+                    category_id=selected_category_id,
+                    controller=self.controller,
+                    parent=self
+                )
+
+                # Connect signals
+                item_editor.item_created.connect(self.on_item_created)
+
+                # Show dialog
+                item_editor.exec()
+
+        except Exception as e:
+            logger.error(f"Error creating item: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al crear el item: {str(e)}"
+            )
+
+    def create_category(self):
+        """Create a new category"""
+        if not self.controller:
+            QMessageBox.warning(
+                self,
+                "Error",
+                "No se pudo acceder al controlador."
+            )
+            return
+
+        name, ok = QInputDialog.getText(
+            self,
+            "Nueva Categoría",
+            "Nombre de la categoría:"
+        )
+
+        if not ok or not name.strip():
+            logger.info("Category creation cancelled or empty name")
+            return
+
+        try:
+            logger.info(f"Creating new category: {name.strip()}")
+
+            # Save directly to database to get real ID
+            category_id = self.controller.config_manager.db.add_category(
+                name=name.strip(),
+                icon="📁",  # Default icon
+                is_predefined=False
+            )
+
+            if not category_id:
+                logger.error("Failed to create category in database")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"No se pudo crear la categoría '{name.strip()}' en la base de datos."
+                )
+                return
+
+            logger.info(f"Category created in database with ID: {category_id}")
+
+            # Show success message
+            QMessageBox.information(
+                self,
+                "Éxito",
+                f"La categoría '{name.strip()}' se creó correctamente."
+            )
+
+            # Emit signal to refresh UI
+            self.data_changed.emit()
+
+        except Exception as e:
+            logger.error(f"Error creating category: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al crear la categoría: {str(e)}"
+            )
+
+    def on_item_created(self, category_id: str):
+        """Handle item created signal"""
+        logger.info(f"Item created in category {category_id}")
+        self.data_changed.emit()
