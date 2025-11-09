@@ -30,7 +30,8 @@ class ItemButton(QFrame):
 
     # Signals
     item_clicked = pyqtSignal(object)
-    favorite_toggled = pyqtSignal(int, bool)  # item_id, is_favorite
+    favorite_toggled = pyqtSignal(int, bool)  # item_id, is_favorite (deprecated - kept for compatibility)
+    archived_toggled = pyqtSignal(int, bool)  # item_id, is_archived (deprecated - kept for compatibility)
     url_open_requested = pyqtSignal(str)  # url to open in embedded browser
 
     def __init__(self, item: Item, show_category: bool = False, parent=None):
@@ -293,24 +294,7 @@ class ItemButton(QFrame):
 
         main_layout.addLayout(left_layout, 1)
 
-        # Favorite button (star)
-        self.favorite_btn = QPushButton()
-        self.favorite_btn.setFixedSize(30, 30)
-        self.favorite_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.favorite_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                font-size: 16pt;
-            }
-            QPushButton:hover {
-                background-color: #3e3e42;
-                border-radius: 3px;
-            }
-        """)
-        self.favorite_btn.clicked.connect(self.toggle_favorite)
-        self.update_favorite_button()
-        main_layout.addWidget(self.favorite_btn)
+        # Favorite button removed - now available in Item Details Dialog
 
         # Info button (show details)
         self.info_btn = QPushButton("ℹ️")
@@ -381,7 +365,11 @@ class ItemButton(QFrame):
             main_layout.addWidget(self.execute_button)
 
         elif self.item.type == ItemType.URL:
-            # Open URL button (only for URL items)
+            # URL action buttons - two buttons layout
+            url_buttons_layout = QHBoxLayout()
+            url_buttons_layout.setSpacing(5)
+
+            # Open in embedded browser button
             self.open_url_button = QPushButton("🌐")
             self.open_url_button.setFixedSize(35, 35)
             self.open_url_button.setStyleSheet("""
@@ -400,9 +388,34 @@ class ItemButton(QFrame):
                 }
             """)
             self.open_url_button.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.open_url_button.setToolTip("Abrir en navegador")
+            self.open_url_button.setToolTip("Abrir en navegador embebido")
             self.open_url_button.clicked.connect(self.open_in_browser)
-            main_layout.addWidget(self.open_url_button)
+            url_buttons_layout.addWidget(self.open_url_button)
+
+            # Open in system browser button (NEW)
+            self.open_external_button = QPushButton("🔗")
+            self.open_external_button.setFixedSize(35, 35)
+            self.open_external_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #0078d4;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 16pt;
+                }
+                QPushButton:hover {
+                    background-color: #106ebe;
+                }
+                QPushButton:pressed {
+                    background-color: #005a9e;
+                }
+            """)
+            self.open_external_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.open_external_button.setToolTip("Abrir en navegador predeterminado del sistema")
+            self.open_external_button.clicked.connect(self.open_in_system_browser)
+            url_buttons_layout.addWidget(self.open_external_button)
+
+            main_layout.addLayout(url_buttons_layout)
 
         elif self.item.type == ItemType.PATH:
             # PATH action buttons
@@ -577,6 +590,49 @@ class ItemButton(QFrame):
 
             except Exception as e:
                 logger.error(f"Error opening URL {self.item.label}: {e}")
+                error_msg = str(e)
+
+            finally:
+                # Track execution end
+                self.usage_tracker.track_execution_end(self.item.id, start_time, success, error_msg)
+
+    def open_in_system_browser(self):
+        """Open URL in system default browser (Chrome, Firefox, Edge, etc.)"""
+        if self.item.type == ItemType.URL:
+            # Track execution start
+            start_time = self.usage_tracker.track_execution_start(self.item.id)
+            success = False
+            error_msg = None
+
+            try:
+                url = self.item.content
+                # Ensure URL has proper protocol
+                if not url.startswith(('http://', 'https://')):
+                    if url.startswith('www.'):
+                        url = 'https://' + url
+                    else:
+                        url = 'https://' + url
+
+                # Open in system default browser
+                webbrowser.open(url)
+                success = True
+                logger.info(f"URL opened in system browser: {url}")
+
+                # Update button style briefly to show it was clicked
+                original_style = self.open_external_button.styleSheet()
+                self.open_external_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #00ff00;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 4px;
+                        font-size: 16pt;
+                    }
+                """)
+                QTimer.singleShot(300, lambda: self.open_external_button.setStyleSheet(original_style))
+
+            except Exception as e:
+                logger.error(f"Error opening URL in system browser {self.item.label}: {e}")
                 error_msg = str(e)
 
             finally:
@@ -888,17 +944,14 @@ class ItemButton(QFrame):
             logger.error(f"Error toggling favorite for item {self.item.id}: {e}")
 
     def get_badge(self) -> str:
-        """Obtener badge del item (🔥 Popular o 🆕 Nuevo)"""
+        """Obtener badge del item (🔥 Popular)"""
         use_count = getattr(self.item, 'use_count', 0)
 
         # Popular: más de 50 usos
         if use_count > 50:
             return "🔥"
 
-        # Nuevo: 0 usos
-        if use_count == 0:
-            return "🆕"
-
+        # Badge "Nuevo" deshabilitado
         return ""
 
     def get_usage_stats(self) -> str:
@@ -958,7 +1011,17 @@ class ItemButton(QFrame):
     def show_details(self):
         """Mostrar ventana de detalles del item"""
         try:
-            dialog = ItemDetailsDialog(self.item, parent=self.window())
+            # Find the FloatingPanel or GlobalSearchPanel parent to pass to dialog
+            refresh_panel = None
+            parent_widget = self.parent()
+            while parent_widget:
+                class_name = parent_widget.__class__.__name__
+                if class_name in ('FloatingPanel', 'GlobalSearchPanel', 'FavoritesFloatingPanel'):
+                    refresh_panel = parent_widget
+                    break
+                parent_widget = parent_widget.parent()
+
+            dialog = ItemDetailsDialog(self.item, floating_panel=refresh_panel, parent=self.window())
             dialog.exec()
         except Exception as e:
             logger.error(f"Error showing item details: {e}")

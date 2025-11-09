@@ -584,6 +584,18 @@ class FloatingPanel(QWidget):
         # Forward signal to parent (MainWindow)
         self.url_open_requested.emit(url)
 
+    def on_item_state_changed(self, item_id: str):
+        """Handle item state change (favorite/archived) from ItemDetailsDialog"""
+        logger.info(f"Item {item_id} state changed, refreshing panel")
+        # Reload category from database to get updated data
+        if self.current_category and self.config_manager:
+            logger.debug(f"Reloading category {self.current_category.id} from database")
+            refreshed_category = self.config_manager.get_category(self.current_category.id)
+            if refreshed_category:
+                self.load_category(refreshed_category)
+            else:
+                logger.error(f"Could not reload category {self.current_category.id}")
+
     # ========== LIST WIDGET HANDLERS ==========
 
     def on_list_executed(self, list_group: str, category_id: int):

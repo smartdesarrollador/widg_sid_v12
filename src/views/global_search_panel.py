@@ -372,6 +372,14 @@ class GlobalSearchPanel(QWidget):
         # Emit signal to parent
         self.item_clicked.emit(item)
 
+    def on_item_state_changed(self, item_id: str):
+        """Handle item state change (favorite/archived) from ItemDetailsDialog"""
+        logger.info(f"Item {item_id} state changed, refreshing search results")
+        # Reload all items and re-apply current search
+        self.load_all_items()
+        if self.search_bar.text():
+            self.on_search_changed(self.search_bar.text())
+
     def on_search_changed(self, query: str):
         """Handle search query change with filtering"""
         logger.debug(f"on_search_changed called with query='{query}'")

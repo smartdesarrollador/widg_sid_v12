@@ -2,8 +2,8 @@
 Item Details Dialog - Muestra información detallada de un item
 """
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-                              QPushButton, QFrame, QScrollArea, QWidget, QGroupBox)
-from PyQt6.QtCore import Qt
+                              QPushButton, QFrame, QScrollArea, QWidget, QGroupBox, QCheckBox)
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 import sys
 from pathlib import Path
@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 class ItemDetailsDialog(QDialog):
     """Diálogo que muestra información detallada de un item"""
 
-    def __init__(self, item: Item, parent=None):
+    def __init__(self, item: Item, floating_panel=None, parent=None):
         super().__init__(parent)
         self.item = item
+        self.floating_panel = floating_panel  # Optional reference to FloatingPanel for refresh
         self.db = DBManager()
         self.category_name = self.get_category_name()
         self.init_ui()
@@ -31,12 +32,12 @@ class ItemDetailsDialog(QDialog):
         """Obtener el nombre de la categoría del item"""
         try:
             # Buscar la categoría a la que pertenece este item
-            categories = self.db.get_all_categories()
+            categories = self.db.get_categories()  # Fixed: was get_all_categories()
             for category in categories:
-                items = self.db.get_items_by_category(category.id)
+                items = self.db.get_items_by_category(category['id'])
                 for item in items:
-                    if item.id == self.item.id:
-                        return category.name
+                    if item.get('id') == self.item.id:
+                        return category['name']
             return "Desconocida"
         except Exception as e:
             logger.error(f"Error getting category name: {e}")
@@ -337,18 +338,117 @@ class ItemDetailsDialog(QDialog):
         return self.create_group("📊 Estadísticas de Uso", stats_items)
 
     def create_flags_group(self) -> QGroupBox:
-        """Crear grupo de flags/estado"""
-        flags_items = [
-            ("Es favorito", "✅ Sí" if self.item.is_favorite else "❌ No"),
+        """Crear grupo de flags/estado con checkboxes editables"""
+        group = QGroupBox("🚩 Estado")
+        layout = QVBoxLayout()
+        layout.setSpacing(10)
+
+        # Marcar como favorito checkbox (editable)
+        favorite_layout = QHBoxLayout()
+        self.favorite_checkbox = QCheckBox("⭐ Marcar como favorito")
+        self.favorite_checkbox.setChecked(self.item.is_favorite)
+        self.favorite_checkbox.stateChanged.connect(self.on_favorite_changed)
+        self.favorite_checkbox.setStyleSheet("""
+            QCheckBox {
+                color: #ffffff;
+                font-weight: bold;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+        """)
+        favorite_layout.addWidget(self.favorite_checkbox)
+        favorite_layout.addStretch()
+        layout.addLayout(favorite_layout)
+
+        # Marcar como archivado checkbox (editable)
+        archived_layout = QHBoxLayout()
+        self.archived_checkbox = QCheckBox("📦 Marcar como archivado")
+        self.archived_checkbox.setChecked(self.item.is_archived)
+        self.archived_checkbox.stateChanged.connect(self.on_archived_changed)
+        self.archived_checkbox.setStyleSheet("""
+            QCheckBox {
+                color: #ffffff;
+                font-weight: bold;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+        """)
+        archived_layout.addWidget(self.archived_checkbox)
+        archived_layout.addStretch()
+        layout.addLayout(archived_layout)
+
+        # Separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("background-color: #3d3d3d;")
+        layout.addWidget(separator)
+
+        # Read-only flags
+        readonly_flags = [
             ("Es sensible", "✅ Sí" if self.item.is_sensitive else "❌ No"),
             ("Está activo", "✅ Sí" if self.item.is_active else "❌ No"),
-            ("Está archivado", "✅ Sí" if self.item.is_archived else "❌ No"),
         ]
 
         if hasattr(self.item, 'is_list'):
-            flags_items.append(("Es parte de lista", "✅ Sí" if self.item.is_list else "❌ No"))
+            readonly_flags.append(("Es parte de lista", "✅ Sí" if self.item.is_list else "❌ No"))
 
-        return self.create_group("🚩 Estado", flags_items)
+        for label, value in readonly_flags:
+            flag_layout = QHBoxLayout()
+
+            label_widget = QLabel(f"{label}:")
+            label_widget.setMinimumWidth(150)
+            label_font = QFont()
+            label_font.setBold(True)
+            label_widget.setFont(label_font)
+            label_widget.setStyleSheet("color: #999999;")
+            flag_layout.addWidget(label_widget)
+
+            value_widget = QLabel(str(value))
+            value_widget.setStyleSheet("color: #ffffff;")
+            flag_layout.addWidget(value_widget, 1)
+
+            layout.addLayout(flag_layout)
+
+        group.setLayout(layout)
+        return group
+
+    def on_favorite_changed(self, state):
+        """Handle favorite checkbox state change"""
+        try:
+            is_favorite = bool(state)
+            self.db.update_item(
+                self.item.id,
+                is_favorite=is_favorite
+            )
+            self.item.is_favorite = is_favorite
+            logger.info(f"Item '{self.item.label}' favorite status changed to {is_favorite}")
+
+            # Notify FloatingPanel directly if available
+            if self.floating_panel and hasattr(self.floating_panel, 'on_item_state_changed'):
+                self.floating_panel.on_item_state_changed(str(self.item.id))
+        except Exception as e:
+            logger.error(f"Error updating favorite status: {e}")
+
+    def on_archived_changed(self, state):
+        """Handle archived checkbox state change"""
+        try:
+            is_archived = bool(state)
+            self.db.update_item(
+                self.item.id,
+                is_archived=is_archived
+            )
+            self.item.is_archived = is_archived
+            logger.info(f"Item '{self.item.label}' archived status changed to {is_archived}")
+
+            # Notify FloatingPanel directly if available
+            if self.floating_panel and hasattr(self.floating_panel, 'on_item_state_changed'):
+                self.floating_panel.on_item_state_changed(str(self.item.id))
+        except Exception as e:
+            logger.error(f"Error updating archived status: {e}")
 
     def get_type_display(self) -> str:
         """Obtener representación visual del tipo de item"""
