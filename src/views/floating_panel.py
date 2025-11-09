@@ -127,11 +127,7 @@ class FloatingPanel(QWidget):
         # Set background with glassmorphism
         self.setStyleSheet(f"""
             FloatingPanel {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(26, 31, 58, 0.92),
-                    stop:1 rgba(10, 14, 39, 0.95)
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 border: 2px solid {self.theme.get_color('primary')};
                 border-left: 5px solid {self.theme.get_color('primary')};
                 border-radius: 12px;

@@ -51,11 +51,7 @@ class CategoryButton(QPushButton):
         if self.is_active:
             self.setStyleSheet(f"""
                 QPushButton {{
-                    background: qlineargradient(
-                        x1:0, y1:0, x2:1, y2:0,
-                        stop:0 {self.theme.get_color('primary')},
-                        stop:1 transparent
-                    );
+                    background-color: {self.theme.get_color('background_deep')};
                     color: {self.theme.get_color('text_primary')};
                     border: none;
                     border-left: 3px solid {self.theme.get_color('accent')};

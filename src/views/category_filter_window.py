@@ -117,11 +117,7 @@ class CategoryFilterWindow(QWidget):
         title_bar.setFixedHeight(45)
         title_bar.setStyleSheet("""
             QWidget {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #667eea,
-                    stop:1 #764ba2
-                );
+                background-color: #667eea;
             }
         """)
 
@@ -598,11 +594,7 @@ class CategoryFilterWindow(QWidget):
         apply_button.setFixedHeight(35)
         apply_button.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #667eea,
-                    stop:1 #764ba2
-                );
+                background-color: #667eea;
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -617,11 +609,7 @@ class CategoryFilterWindow(QWidget):
                 );
             }
             QPushButton:pressed {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #4457bc,
-                    stop:1 #542974
-                );
+                background-color: #4457bc;
             }
         """)
         apply_button.clicked.connect(self.apply_filters)
@@ -656,11 +644,7 @@ class CategoryFilterWindow(QWidget):
                 border-radius: 4px;
             }
             QCheckBox::indicator:checked {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #667eea,
-                    stop:1 #764ba2
-                );
+                background-color: #667eea;
                 border-color: #667eea;
             }
             QSpinBox {

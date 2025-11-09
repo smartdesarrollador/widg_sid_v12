@@ -50,11 +50,7 @@ class CreationStep(QWidget):
                 font-weight: bold;
             }
             QProgressBar::chunk {
-                background-color: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #00d4ff,
-                    stop:1 #00ff88
-                );
+                background-color: #00d4ff;
                 border-radius: 3px;
             }
         """)

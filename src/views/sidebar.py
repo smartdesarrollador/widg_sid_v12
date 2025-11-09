@@ -80,11 +80,7 @@ class Sidebar(QWidget):
         title_label = QLabel("WS")
         title_label.setStyleSheet(f"""
             QLabel {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get_color('primary')},
-                    stop:1 {self.theme.get_color('secondary')}
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('text_primary')};
                 padding: 10px;
                 font-size: 13pt;
@@ -103,11 +99,7 @@ class Sidebar(QWidget):
         self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get_color('secondary')},
-                    stop:1 {self.theme.get_color('primary')}
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('text_primary')};
                 border: none;
                 border-bottom: 2px solid {self.theme.get_color('background_deep')};
@@ -167,11 +159,7 @@ class Sidebar(QWidget):
         self.global_search_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.global_search_button.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get_color('secondary')},
-                    stop:1 {self.theme.get_color('accent')}
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('text_primary')};
                 border: none;
                 border-bottom: 2px solid {self.theme.get_color('background_deep')};
@@ -201,11 +189,7 @@ class Sidebar(QWidget):
         self.notebook_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.notebook_button.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get_color('accent')},
-                    stop:1 {self.theme.get_color('primary')}
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('text_primary')};
                 border: none;
                 border-bottom: 2px solid {self.theme.get_color('background_deep')};
@@ -235,11 +219,7 @@ class Sidebar(QWidget):
         self.category_filter_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.category_filter_button.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get_color('primary')},
-                    stop:1 {self.theme.get_color('secondary')}
-                );
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('text_primary')};
                 border: none;
                 border-bottom: 2px solid {self.theme.get_color('background_deep')};
@@ -291,7 +271,7 @@ class Sidebar(QWidget):
         self.scroll_down_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.scroll_down_button.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.theme.get_color('background_mid')};
+                background-color: {self.theme.get_color('background_deep')};
                 color: {self.theme.get_color('primary')};
                 border: none;
                 border-top: 1px solid {self.theme.get_color('surface')};

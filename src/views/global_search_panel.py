@@ -103,11 +103,7 @@ class GlobalSearchPanel(QWidget):
         header_widget = QWidget()
         header_widget.setStyleSheet("""
             QWidget {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #f093fb,
-                    stop:1 #f5576c
-                );
+                background-color: #252525;
                 border-radius: 6px 6px 0 0;
             }
         """)
@@ -171,11 +167,7 @@ class GlobalSearchPanel(QWidget):
         self.open_filters_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.open_filters_button.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #f093fb,
-                    stop:1 #f5576c
-                );
+                background-color: #252525;
                 color: #ffffff;
                 border: none;
                 border-radius: 4px;
@@ -192,11 +184,7 @@ class GlobalSearchPanel(QWidget):
                 );
             }
             QPushButton:pressed {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #ce73db,
-                    stop:1 #d3374a
-                );
+                background-color: #252525;
             }
         """)
         self.open_filters_button.clicked.connect(self.toggle_filters_window)
