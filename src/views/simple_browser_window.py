@@ -579,13 +579,6 @@ class SimpleBrowserWindow(QWidget):
         self.reload_btn.clicked.connect(self.reload_page)
         nav_layout.addWidget(self.reload_btn)
 
-        # Botón listado de pestañas
-        self.tabs_list_btn = QPushButton("☰")
-        self.tabs_list_btn.setFixedWidth(40)
-        self.tabs_list_btn.setToolTip("Ver todas las pestañas")
-        self.tabs_list_btn.clicked.connect(self.show_tabs_menu)
-        nav_layout.addWidget(self.tabs_list_btn)
-
         # Botón cerrar
         self.close_btn = QPushButton("✕")
         self.close_btn.setFixedWidth(40)
@@ -601,10 +594,20 @@ class SimpleBrowserWindow(QWidget):
         tools_layout.setContentsMargins(5, 0, 5, 5)
         tools_layout.setSpacing(5)
 
-        # Sección: Marcadores
-        bookmarks_label = QLabel("Marcadores:")
-        bookmarks_label.setStyleSheet("color: #00d4ff; font-weight: bold; font-size: 11px;")
-        tools_layout.addWidget(bookmarks_label)
+        # Botón listado de pestañas (movido desde nav_bar)
+        self.tabs_list_btn = QPushButton("☰")
+        self.tabs_list_btn.setFixedWidth(35)
+        self.tabs_list_btn.setFixedHeight(30)
+        self.tabs_list_btn.setToolTip("Ver todas las pestañas")
+        self.tabs_list_btn.clicked.connect(self.show_tabs_menu)
+        tools_layout.addWidget(self.tabs_list_btn)
+
+        # Separador
+        separator0 = QLabel("|")
+        separator0.setStyleSheet("color: #0f3460;")
+        separator0.setFixedWidth(15)
+        separator0.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tools_layout.addWidget(separator0)
 
         # Botón marcador (estrella)
         self.bookmark_btn = QPushButton("☆")
@@ -628,11 +631,6 @@ class SimpleBrowserWindow(QWidget):
         separator1.setFixedWidth(15)
         separator1.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tools_layout.addWidget(separator1)
-
-        # Sección: Sesiones
-        sessions_label = QLabel("Sesiones:")
-        sessions_label.setStyleSheet("color: #00d4ff; font-weight: bold; font-size: 11px;")
-        tools_layout.addWidget(sessions_label)
 
         # Botón guardar sesión
         self.save_session_btn = QPushButton("💾")

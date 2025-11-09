@@ -242,7 +242,7 @@ class StructureDashboard(QDialog):
     def create_header(self) -> QWidget:
         """Create header widget with title and buttons"""
         header = QWidget()
-        header.setFixedHeight(100)  # Aumentado para 2 filas
+        header.setFixedHeight(120)  # Aumentado para 2 filas con más espacio vertical
         header.setStyleSheet("""
             QWidget {
                 background-color: #252525;
@@ -512,7 +512,7 @@ class StructureDashboard(QDialog):
     def create_footer(self) -> QWidget:
         """Create footer widget with statistics"""
         footer = QWidget()
-        footer.setFixedHeight(40)
+        footer.setFixedHeight(50)  # Aumentado para que las estadísticas se vean completas
         footer.setStyleSheet("""
             QWidget {
                 background-color: #252525;
