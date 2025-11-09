@@ -98,7 +98,9 @@ class DashboardManager:
                         'is_list': bool(item.get('is_list', 0)),
                         'list_group': item.get('list_group', None),
                         'is_active': item.get('is_active', 1),  # Agregar campo is_active
-                        'is_archived': bool(item.get('is_archived', 0))  # Agregar campo is_archived
+                        'is_archived': bool(item.get('is_archived', 0)),  # Agregar campo is_archived
+                        'use_count': item.get('use_count', 0),  # Agregar campo use_count para filtro "Más Usados"
+                        'last_used': item.get('last_used', None)  # Agregar campo last_used para filtro "Recientes"
                     }
                     category_data['items'].append(item_data)
 
