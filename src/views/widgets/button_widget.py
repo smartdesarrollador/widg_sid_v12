@@ -28,6 +28,9 @@ class CategoryButton(QPushButton):
         # Set button text
         self.setText(self.category_name)
 
+        # Set tooltip with full category name
+        self.setToolTip(self.category_name)
+
         # Set fixed size - Altura reducida para visualizar más categorías
         self.setFixedSize(70, 45)
 
