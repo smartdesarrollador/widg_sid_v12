@@ -252,32 +252,44 @@ CREATE INDEX idx_usage_date ON item_usage_history(used_at)
 
 **Rows:** 120
 
-| Column           | Type      | Not Null | Default           | Primary Key |
-| ---------------- | --------- | -------- | ----------------- | ----------- |
-| `id`             | INTEGER   |          |                   | ✓           |
-| `category_id`    | INTEGER   | ✓        |                   |             |
-| `label`          | TEXT      | ✓        |                   |             |
-| `content`        | TEXT      | ✓        |                   |             |
-| `type`           | TEXT      |          | 'TEXT'            |             |
-| `icon`           | TEXT      |          |                   |             |
-| `is_sensitive`   | BOOLEAN   |          | 0                 |             |
-| `tags`           | TEXT      |          |                   |             |
-| `created_at`     | TIMESTAMP |          | CURRENT_TIMESTAMP |             |
-| `updated_at`     | TIMESTAMP |          | CURRENT_TIMESTAMP |             |
-| `last_used`      | TIMESTAMP |          |                   |             |
-| `is_favorite`    | INTEGER   |          | 0                 |             |
-| `favorite_order` | INTEGER   |          | 0                 |             |
-| `use_count`      | INTEGER   |          | 0                 |             |
-| `color`          | TEXT      |          |                   |             |
-| `badge`          | TEXT      |          |                   |             |
-| `description`    | TEXT      |          |                   |             |
-| `shortcut`       | TEXT      |          |                   |             |
-| `working_dir`    | TEXT      |          |                   |             |
-| `is_active`      | BOOLEAN   |          | 1                 |             |
-| `is_archived`    | BOOLEAN   |          | 0                 |             |
-| `is_list`        | BOOLEAN   |          | 0                 |             |
-| `list_group`     | TEXT      |          | NULL              |             |
-| `orden_lista`    | INTEGER   |          | 0                 |             |
+| Column              | Type         | Not Null | Default           | Primary Key |
+| ------------------- | ------------ | -------- | ----------------- | ----------- |
+| `id`                | INTEGER      |          |                   | ✓           |
+| `category_id`       | INTEGER      | ✓        |                   |             |
+| `label`             | TEXT         | ✓        |                   |             |
+| `content`           | TEXT         | ✓        |                   |             |
+| `type`              | TEXT         |          | 'TEXT'            |             |
+| `icon`              | TEXT         |          |                   |             |
+| `is_sensitive`      | BOOLEAN      |          | 0                 |             |
+| `tags`              | TEXT         |          |                   |             |
+| `created_at`        | TIMESTAMP    |          | CURRENT_TIMESTAMP |             |
+| `updated_at`        | TIMESTAMP    |          | CURRENT_TIMESTAMP |             |
+| `last_used`         | TIMESTAMP    |          |                   |             |
+| `is_favorite`       | INTEGER      |          | 0                 |             |
+| `favorite_order`    | INTEGER      |          | 0                 |             |
+| `use_count`         | INTEGER      |          | 0                 |             |
+| `color`             | TEXT         |          |                   |             |
+| `badge`             | TEXT         |          |                   |             |
+| `description`       | TEXT         |          |                   |             |
+| `shortcut`          | TEXT         |          |                   |             |
+| `working_dir`       | TEXT         |          |                   |             |
+| `is_active`         | BOOLEAN      |          | 1                 |             |
+| `is_archived`       | BOOLEAN      |          | 0                 |             |
+| `is_list`           | BOOLEAN      |          | 0                 |             |
+| `list_group`        | TEXT         |          | NULL              |             |
+| `orden_lista`       | INTEGER      |          | 0                 |             |
+| `file_size`         | INTEGER      |          | NULL              |             |
+| `file_type`         | VARCHAR(50)  |          | NULL              |             |
+| `file_extension`    | VARCHAR(10)  |          | NULL              |             |
+| `original_filename` | VARCHAR(255) |          | NULL              |             |
+| `file_hash`         | VARCHAR(64)  |          | NULL              |             |
+
+**File Management Fields (Added for PATH items):**
+- `file_size`: File size in bytes
+- `file_type`: MIME type of the file (e.g., "image/jpeg", "application/pdf")
+- `file_extension`: File extension without dot (e.g., "jpg", "pdf", "txt")
+- `original_filename`: Original name of the file before storage
+- `file_hash`: SHA256 hash of the file for integrity verification
 
 **CREATE Statement:**
 
@@ -293,7 +305,25 @@ CREATE TABLE items (
                 tags TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_used TIMESTAMP, is_favorite INTEGER DEFAULT 0, favorite_order INTEGER DEFAULT 0, use_count INTEGER DEFAULT 0, color TEXT, badge TEXT, description TEXT, shortcut TEXT, working_dir TEXT, is_active BOOLEAN DEFAULT 1, is_archived BOOLEAN DEFAULT 0, is_list BOOLEAN DEFAULT 0, list_group TEXT DEFAULT NULL, orden_lista INTEGER DEFAULT 0,
+                last_used TIMESTAMP,
+                is_favorite INTEGER DEFAULT 0,
+                favorite_order INTEGER DEFAULT 0,
+                use_count INTEGER DEFAULT 0,
+                color TEXT,
+                badge TEXT,
+                description TEXT,
+                shortcut TEXT,
+                working_dir TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                is_archived BOOLEAN DEFAULT 0,
+                is_list BOOLEAN DEFAULT 0,
+                list_group TEXT DEFAULT NULL,
+                orden_lista INTEGER DEFAULT 0,
+                file_size INTEGER DEFAULT NULL,
+                file_type VARCHAR(50) DEFAULT NULL,
+                file_extension VARCHAR(10) DEFAULT NULL,
+                original_filename VARCHAR(255) DEFAULT NULL,
+                file_hash VARCHAR(64) DEFAULT NULL,
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
             )
 ```

@@ -342,11 +342,11 @@ class StructureDashboard(QDialog):
 
         main_layout.addLayout(row1_layout)
 
-        # ========== FILA 2: Filtros de estado + Filtros de tipo + Acciones ==========
+        # ========== FILA 2: Filtros de estado originales + Filtros de tipo ==========
         row2_layout = QHBoxLayout()
         row2_layout.setSpacing(8)
 
-        # Filtros de estado
+        # Filtros de estado originales
         self.fav_btn = QPushButton("⭐ Favoritos")
         self.fav_btn.setToolTip("Mostrar solo items favoritos")
         self.fav_btn.clicked.connect(self.filter_favorites)
@@ -403,25 +403,73 @@ class StructureDashboard(QDialog):
         # Separador visual
         row2_layout.addSpacing(15)
 
-        # Botones de acción
-        sort_btn = QPushButton("🔢 +Items")
-        sort_btn.setToolTip("Ordenar por cantidad de items (desc)")
-        sort_btn.clicked.connect(self.sort_by_items)
-        row2_layout.addWidget(sort_btn)
-
-        reset_btn = QPushButton("↺ Todo")
+        # Botón Todo
+        reset_btn = QPushButton("🎯 Todo")
         reset_btn.setToolTip("Mostrar todo sin filtros")
         reset_btn.clicked.connect(self.reset_filters)
         row2_layout.addWidget(reset_btn)
 
-        # Refresh button
-        refresh_btn = QPushButton("🔄 Refrescar")
-        refresh_btn.clicked.connect(self.refresh_data)
-        row2_layout.addWidget(refresh_btn)
-
         row2_layout.addStretch()
 
         main_layout.addLayout(row2_layout)
+
+        # ========== FILA 3: Nuevos filtros + Botones de acción ==========
+        row3_layout = QHBoxLayout()
+        row3_layout.setSpacing(8)
+
+        # Nuevos filtros
+        self.sensitive_btn = QPushButton("🔒 Sensibles")
+        self.sensitive_btn.setToolTip("Mostrar solo items sensibles (encriptados)")
+        self.sensitive_btn.clicked.connect(self.filter_sensitive)
+        self.sensitive_btn.setCheckable(True)
+        row3_layout.addWidget(self.sensitive_btn)
+        self.filter_buttons['sensitive'] = self.sensitive_btn
+
+        self.most_used_btn = QPushButton("🔥 Más Usados")
+        self.most_used_btn.setToolTip("Mostrar items más usados (top 50)")
+        self.most_used_btn.clicked.connect(self.filter_most_used)
+        self.most_used_btn.setCheckable(True)
+        row3_layout.addWidget(self.most_used_btn)
+        self.filter_buttons['most_used'] = self.most_used_btn
+
+        self.lists_btn = QPushButton("📋 Listas")
+        self.lists_btn.setToolTip("Mostrar solo items de listas")
+        self.lists_btn.clicked.connect(self.filter_lists)
+        self.lists_btn.setCheckable(True)
+        row3_layout.addWidget(self.lists_btn)
+        self.filter_buttons['lists'] = self.lists_btn
+
+        self.with_tags_btn = QPushButton("🏷️ Con Tags")
+        self.with_tags_btn.setToolTip("Mostrar solo items con tags asignados")
+        self.with_tags_btn.clicked.connect(self.filter_with_tags)
+        self.with_tags_btn.setCheckable(True)
+        row3_layout.addWidget(self.with_tags_btn)
+        self.filter_buttons['with_tags'] = self.with_tags_btn
+
+        self.recent_btn = QPushButton("🕐 Recientes")
+        self.recent_btn.setToolTip("Mostrar items usados recientemente (últimos 7 días)")
+        self.recent_btn.clicked.connect(self.filter_recent)
+        self.recent_btn.setCheckable(True)
+        row3_layout.addWidget(self.recent_btn)
+        self.filter_buttons['recent'] = self.recent_btn
+
+        # Separador visual
+        row3_layout.addSpacing(15)
+
+        # Botones de acción
+        sort_btn = QPushButton("🔢 +Items")
+        sort_btn.setToolTip("Ordenar por cantidad de items (desc)")
+        sort_btn.clicked.connect(self.sort_by_items)
+        row3_layout.addWidget(sort_btn)
+
+        # Refresh button
+        refresh_btn = QPushButton("🔄 Refrescar")
+        refresh_btn.clicked.connect(self.refresh_data)
+        row3_layout.addWidget(refresh_btn)
+
+        row3_layout.addStretch()
+
+        main_layout.addLayout(row3_layout)
 
         return header
 
@@ -1676,6 +1724,220 @@ class StructureDashboard(QDialog):
 
         # Update stats label
         msg = "📦 Mostrando solo archivados"
+        if self.active_type_filters:
+            types_str = ', '.join(sorted(self.active_type_filters))
+            msg += f" (tipos: {types_str})"
+        self.stats_label.setText(msg)
+
+    def filter_sensitive(self):
+        """Show only sensitive (encrypted) items"""
+        logger.info("Filtering sensitive items...")
+
+        # Actualizar estado de filtro
+        self.set_active_filter('sensitive')
+
+        # Filtrar estructura
+        import copy
+        filtered_structure = copy.deepcopy(self.structure)
+
+        # Filter sensitive items
+        for category in filtered_structure['categories']:
+            category['items'] = [
+                item for item in category['items']
+                if item.get('is_sensitive', False)
+            ]
+
+        # Also apply type filters if active
+        if self.active_type_filters:
+            for category in filtered_structure['categories']:
+                category['items'] = [
+                    item for item in category['items']
+                    if item.get('type') in self.active_type_filters
+                ]
+
+        self.tree_widget.clear()
+        self.populate_tree(filtered_structure)
+
+        # Update stats label
+        msg = "🔒 Mostrando solo sensibles"
+        if self.active_type_filters:
+            types_str = ', '.join(sorted(self.active_type_filters))
+            msg += f" (tipos: {types_str})"
+        self.stats_label.setText(msg)
+
+    def filter_most_used(self):
+        """Show most used items (top 50)"""
+        logger.info("Filtering most used items...")
+
+        # Actualizar estado de filtro
+        self.set_active_filter('most_used')
+
+        # Filtrar estructura
+        import copy
+        filtered_structure = copy.deepcopy(self.structure)
+
+        # Collect all items with use_count
+        all_items_with_usage = []
+        for category in filtered_structure['categories']:
+            for item in category['items']:
+                use_count = item.get('use_count', 0)
+                if use_count > 0:
+                    all_items_with_usage.append((use_count, item, category))
+
+        # Sort by use_count descending and take top 50
+        all_items_with_usage.sort(key=lambda x: x[0], reverse=True)
+        top_items = all_items_with_usage[:50]
+
+        # Get set of top item ids
+        top_item_ids = {item['id'] for _, item, _ in top_items}
+
+        # Filter items to only include top used
+        for category in filtered_structure['categories']:
+            category['items'] = [
+                item for item in category['items']
+                if item['id'] in top_item_ids
+            ]
+
+        # Also apply type filters if active
+        if self.active_type_filters:
+            for category in filtered_structure['categories']:
+                category['items'] = [
+                    item for item in category['items']
+                    if item.get('type') in self.active_type_filters
+                ]
+
+        self.tree_widget.clear()
+        self.populate_tree(filtered_structure)
+
+        # Update stats label
+        total_shown = len(top_items)
+        msg = f"🔥 Mostrando top {total_shown} más usados"
+        if self.active_type_filters:
+            types_str = ', '.join(sorted(self.active_type_filters))
+            msg += f" (tipos: {types_str})"
+        self.stats_label.setText(msg)
+
+    def filter_lists(self):
+        """Show only list items"""
+        logger.info("Filtering list items...")
+
+        # Actualizar estado de filtro
+        self.set_active_filter('lists')
+
+        # Filtrar estructura
+        import copy
+        filtered_structure = copy.deepcopy(self.structure)
+
+        # Filter list items
+        for category in filtered_structure['categories']:
+            category['items'] = [
+                item for item in category['items']
+                if item.get('is_list', False)
+            ]
+
+        # Also apply type filters if active
+        if self.active_type_filters:
+            for category in filtered_structure['categories']:
+                category['items'] = [
+                    item for item in category['items']
+                    if item.get('type') in self.active_type_filters
+                ]
+
+        self.tree_widget.clear()
+        self.populate_tree(filtered_structure)
+
+        # Update stats label
+        msg = "📋 Mostrando solo listas"
+        if self.active_type_filters:
+            types_str = ', '.join(sorted(self.active_type_filters))
+            msg += f" (tipos: {types_str})"
+        self.stats_label.setText(msg)
+
+    def filter_with_tags(self):
+        """Show only items with tags"""
+        logger.info("Filtering items with tags...")
+
+        # Actualizar estado de filtro
+        self.set_active_filter('with_tags')
+
+        # Filtrar estructura
+        import copy
+        filtered_structure = copy.deepcopy(self.structure)
+
+        # Filter items with tags
+        for category in filtered_structure['categories']:
+            filtered_items = []
+            for item in category['items']:
+                tags = item.get('tags')
+                if tags:
+                    # Tags puede ser string o lista
+                    if isinstance(tags, str) and tags.strip():
+                        filtered_items.append(item)
+                    elif isinstance(tags, list) and len(tags) > 0:
+                        filtered_items.append(item)
+            category['items'] = filtered_items
+
+        # Also apply type filters if active
+        if self.active_type_filters:
+            for category in filtered_structure['categories']:
+                category['items'] = [
+                    item for item in category['items']
+                    if item.get('type') in self.active_type_filters
+                ]
+
+        self.tree_widget.clear()
+        self.populate_tree(filtered_structure)
+
+        # Update stats label
+        msg = "🏷️ Mostrando solo con tags"
+        if self.active_type_filters:
+            types_str = ', '.join(sorted(self.active_type_filters))
+            msg += f" (tipos: {types_str})"
+        self.stats_label.setText(msg)
+
+    def filter_recent(self):
+        """Show items used recently (last 7 days)"""
+        logger.info("Filtering recent items...")
+
+        # Actualizar estado de filtro
+        self.set_active_filter('recent')
+
+        # Filtrar estructura
+        import copy
+        from datetime import datetime, timedelta
+        filtered_structure = copy.deepcopy(self.structure)
+
+        # Calculate date 7 days ago
+        seven_days_ago = datetime.now() - timedelta(days=7)
+
+        # Filter recent items
+        for category in filtered_structure['categories']:
+            recent_items = []
+            for item in category['items']:
+                last_used = item.get('last_used')
+                if last_used:
+                    try:
+                        # Parse ISO format datetime
+                        last_used_dt = datetime.fromisoformat(last_used.replace('Z', '+00:00'))
+                        if last_used_dt >= seven_days_ago:
+                            recent_items.append(item)
+                    except:
+                        pass
+            category['items'] = recent_items
+
+        # Also apply type filters if active
+        if self.active_type_filters:
+            for category in filtered_structure['categories']:
+                category['items'] = [
+                    item for item in category['items']
+                    if item.get('type') in self.active_type_filters
+                ]
+
+        self.tree_widget.clear()
+        self.populate_tree(filtered_structure)
+
+        # Update stats label
+        msg = "🕐 Mostrando recientes (7 días)"
         if self.active_type_filters:
             types_str = ', '.join(sorted(self.active_type_filters))
             msg += f" (tipos: {types_str})"
