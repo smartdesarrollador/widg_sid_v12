@@ -476,11 +476,13 @@ class StructureDashboard(QDialog):
     def create_tree_widget(self) -> QTreeWidget:
         """Create the main tree widget"""
         tree = QTreeWidget()
-        tree.setHeaderLabels(["☐", "Nombre", "Tipo", "Info"])
-        tree.setColumnWidth(0, 70)   # Checkbox column (aumentado para que no tape el header)
-        tree.setColumnWidth(1, 340)  # Name column (reducido un poco para compensar)
+        tree.setHeaderLabels(["☐", "Nombre", "Tipo", "Tags", "Contenido", "Listas"])
+        tree.setColumnWidth(0, 70)   # Checkbox column
+        tree.setColumnWidth(1, 340)  # Name column
         tree.setColumnWidth(2, 100)  # Type column
-        tree.setColumnWidth(3, 600)  # Info column
+        tree.setColumnWidth(3, 250)  # Tags column
+        tree.setColumnWidth(4, 350)  # Contenido column
+        tree.setColumnWidth(5, 200)  # Listas column
 
         # Enable alternating row colors
         tree.setAlternatingRowColors(True)
@@ -491,7 +493,9 @@ class StructureDashboard(QDialog):
         # Set custom delegate for highlighting
         self.highlight_delegate = HighlightDelegate(tree)
         tree.setItemDelegateForColumn(1, self.highlight_delegate)  # Highlight in column 1 (Name)
-        tree.setItemDelegateForColumn(3, self.highlight_delegate)  # Highlight in column 3 (Info)
+        tree.setItemDelegateForColumn(3, self.highlight_delegate)  # Highlight in column 3 (Tags)
+        tree.setItemDelegateForColumn(4, self.highlight_delegate)  # Highlight in column 4 (Contenido)
+        tree.setItemDelegateForColumn(5, self.highlight_delegate)  # Highlight in column 5 (Listas)
 
         # Connect checkbox change signal
         tree.itemChanged.connect(self.on_item_check_changed)
@@ -608,7 +612,7 @@ class StructureDashboard(QDialog):
             # Aplicar estilo visual adicional para categorías desactivadas
             if not category.get('is_active', 1):
                 # Cambiar el color del texto para categorías desactivadas
-                for col in range(4):
+                for col in range(6):
                     category_item.setForeground(col, QBrush(QColor('#888888')))  # Texto gris
 
             # Column 2: Type
@@ -618,6 +622,12 @@ class StructureDashboard(QDialog):
             if category['tags']:
                 tags_str = ", ".join([f"#{tag}" for tag in category['tags']])
                 category_item.setText(3, tags_str)
+
+            # Column 4: Contenido (empty for categories)
+            category_item.setText(4, "")
+
+            # Column 5: Listas (empty for categories)
+            category_item.setText(5, "")
 
             # Build tooltip for category
             category_tooltip_parts = []
@@ -677,7 +687,7 @@ class StructureDashboard(QDialog):
                 # Aplicar estilo visual adicional para items desactivados o archivados
                 if item.get('is_archived') or not item.get('is_active', 1):
                     # Cambiar el color del texto para items desactivados/archivados
-                    for col in range(4):
+                    for col in range(6):
                         item_widget.setForeground(col, QBrush(QColor('#888888')))  # Texto gris
 
                 # Column 2: Item type
@@ -690,26 +700,27 @@ class StructureDashboard(QDialog):
                 type_icon = type_icons.get(item['type'], '📄')
                 item_widget.setText(2, f"{type_icon} {item['type']}")
 
-                # Column 3: Tags + list_group + preview
-                info_parts = []
-
-                # List group (if is_list)
-                if item.get('is_list') and item.get('list_group'):
-                    info_parts.append(f"📝 Lista: {item['list_group']}")
-
-                # Tags
+                # Column 3: Tags
                 if item['tags']:
                     tags_str = ", ".join([f"#{tag}" for tag in item['tags']])
-                    info_parts.append(tags_str)
+                    item_widget.setText(3, tags_str)
+                else:
+                    item_widget.setText(3, "")
 
-                # Content preview (first 50 chars)
+                # Column 4: Contenido (preview)
                 if not item['is_sensitive'] and item['content']:
-                    preview = item['content'][:50]
-                    if len(item['content']) > 50:
+                    preview = item['content'][:100]
+                    if len(item['content']) > 100:
                         preview += "..."
-                    info_parts.append(f"Preview: {preview}")
+                    item_widget.setText(4, preview)
+                else:
+                    item_widget.setText(4, "")
 
-                item_widget.setText(3, " | ".join(info_parts))
+                # Column 5: Listas (list group)
+                if item.get('is_list') and item.get('list_group'):
+                    item_widget.setText(5, f"📝 Lista: {item['list_group']}")
+                else:
+                    item_widget.setText(5, "")
 
                 # Build tooltip with detailed information
                 tooltip_parts = []
@@ -2124,13 +2135,13 @@ class StructureDashboard(QDialog):
             category_item = root.child(cat_idx)
 
             # Reset category background
-            for col in range(3):
+            for col in range(6):
                 category_item.setBackground(col, QBrush(QColor('#252525')))
 
             # Reset items background
             for item_idx in range(category_item.childCount()):
                 item_widget = category_item.child(item_idx)
-                for col in range(3):
+                for col in range(6):
                     item_widget.setBackground(col, QBrush(QColor('#252525')))
 
     def highlight_matches(self, matches: list):
@@ -2151,7 +2162,7 @@ class StructureDashboard(QDialog):
 
             if item_idx == -1:
                 # Highlight category
-                for col in range(3):
+                for col in range(6):
                     category_item.setBackground(col, QBrush(highlight_color))
                 # Expand category to show items
                 category_item.setExpanded(True)
@@ -2159,7 +2170,7 @@ class StructureDashboard(QDialog):
                 # Highlight item
                 if item_idx < category_item.childCount():
                     item_widget = category_item.child(item_idx)
-                    for col in range(3):
+                    for col in range(6):
                         item_widget.setBackground(col, QBrush(highlight_color))
                     # Expand category to show highlighted item
                     category_item.setExpanded(True)
