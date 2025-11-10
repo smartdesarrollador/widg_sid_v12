@@ -379,18 +379,18 @@ class MainWindow(QMainWindow):
                 self.floating_panel = sender_panel
                 logger.info(f"Panel unpinned and became active panel. Remaining pinned: {len(self.pinned_panels)}")
 
-            # Delete panel from database if it was saved
+            # Archive panel in database (mark as inactive) instead of deleting
             if sender_panel.panel_id and self.controller:
                 try:
-                    # Unregister keyboard shortcut before deleting
+                    # Unregister keyboard shortcut before archiving
                     self.unregister_panel_shortcut(sender_panel)
 
-                    self.controller.pinned_panels_manager.delete_panel(sender_panel.panel_id)
-                    logger.info(f"Panel {sender_panel.panel_id} deleted from database on unpin")
-                    # Clear panel_id so it won't try to update anymore
+                    self.controller.pinned_panels_manager.archive_panel(sender_panel.panel_id)
+                    logger.info(f"Panel {sender_panel.panel_id} archived (marked as inactive) on unpin")
+                    # Clear panel_id so it won't try to auto-save anymore
                     sender_panel.panel_id = None
                 except Exception as e:
-                    logger.error(f"Error deleting panel from database on unpin: {e}", exc_info=True)
+                    logger.error(f"Error archiving panel from database on unpin: {e}", exc_info=True)
 
     def position_new_panel(self, panel):
         """Position a new panel always at the same initial position (next to sidebar)"""
@@ -1521,16 +1521,18 @@ class MainWindow(QMainWindow):
 
     def on_restore_panel_requested(self, panel_id: int):
         """Handle request to restore/open a saved panel"""
-        logger.info(f"Restore panel requested: {panel_id}")
+        logger.info(f"[MAIN WINDOW] Restore panel requested: {panel_id}")
 
         if not self.controller:
-            logger.error("No controller available")
+            logger.error("[MAIN WINDOW] No controller available")
             return
 
         # Get panel data from database
         panel_data = self.controller.pinned_panels_manager.get_panel_by_id(panel_id)
+        logger.debug(f"[MAIN WINDOW] Panel data retrieved: {panel_data is not None}")
+
         if not panel_data:
-            logger.error(f"Panel {panel_id} not found in database")
+            logger.error(f"[MAIN WINDOW] Panel {panel_id} not found in database")
             QMessageBox.warning(
                 self,
                 "Error",
@@ -1540,8 +1542,10 @@ class MainWindow(QMainWindow):
 
         # Get category
         category = self.controller.get_category(str(panel_data['category_id']))
+        logger.debug(f"[MAIN WINDOW] Category retrieved: {category is not None}")
+
         if not category:
-            logger.error(f"Category {panel_data['category_id']} not found")
+            logger.error(f"[MAIN WINDOW] Category {panel_data['category_id']} not found")
             QMessageBox.warning(
                 self,
                 "Error",
@@ -1596,14 +1600,18 @@ class MainWindow(QMainWindow):
 
         # Add to pinned panels list
         self.pinned_panels.append(restored_panel)
+        logger.debug(f"[MAIN WINDOW] Panel {panel_id} added to pinned_panels list. Total panels: {len(self.pinned_panels)}")
 
         # Update last_opened in database
         self.controller.pinned_panels_manager.mark_panel_opened(panel_id)
 
         # Show panel
+        logger.info(f"[MAIN WINDOW] Showing panel {panel_id}")
         restored_panel.show()
+        restored_panel.raise_()
+        restored_panel.activateWindow()
 
-        logger.info(f"Panel {panel_id} restored successfully")
+        logger.info(f"[MAIN WINDOW] Panel {panel_id} restored and shown successfully")
 
     def on_panel_deleted_from_window(self, panel_id: int):
         """Handle panel deletion from management window"""

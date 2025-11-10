@@ -259,6 +259,34 @@ class PinnedPanelsManager:
             logger.error(f"Failed to delete panel: {e}")
             raise
 
+    def archive_panel(self, panel_id: int):
+        """
+        Archive panel (mark as inactive) instead of deleting it
+
+        Args:
+            panel_id: Panel ID to archive
+        """
+        try:
+            self.db.update_pinned_panel(panel_id, is_active=False)
+            logger.info(f"Panel {panel_id} archived (marked as inactive)")
+        except Exception as e:
+            logger.error(f"Failed to archive panel: {e}")
+            raise
+
+    def restore_panel(self, panel_id: int):
+        """
+        Restore an archived panel (mark as active)
+
+        Args:
+            panel_id: Panel ID to restore
+        """
+        try:
+            self.db.update_pinned_panel(panel_id, is_active=True)
+            logger.info(f"Panel {panel_id} restored (marked as active)")
+        except Exception as e:
+            logger.error(f"Failed to restore panel: {e}")
+            raise
+
     def cleanup_on_exit(self):
         """
         Mark all panels as inactive when app closes

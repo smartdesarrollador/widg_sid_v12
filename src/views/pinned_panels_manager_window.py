@@ -116,6 +116,13 @@ class PinnedPanelsManagerWindow(QWidget):
         self.search_input.textChanged.connect(self.filter_panels)
         search_layout.addWidget(self.search_input, 3)
 
+        # Filtro: Estado del panel
+        self.status_filter_combo = QComboBox()
+        self.status_filter_combo.addItem("📌 Paneles Activos", "active")
+        self.status_filter_combo.addItem("📦 Paneles Archivados", "archived")
+        self.status_filter_combo.currentIndexChanged.connect(self.on_status_filter_changed)
+        search_layout.addWidget(self.status_filter_combo, 2)
+
         # Filtro: Solo con filtros activos
         self.filter_combo = QComboBox()
         self.filter_combo.addItem("Todos los paneles", "all")
@@ -210,22 +217,28 @@ class PinnedPanelsManagerWindow(QWidget):
         # Botones de acción
         actions_layout = QHBoxLayout()
 
-        self.open_btn = QPushButton("Abrir")
+        self.open_btn = QPushButton("🚀 Abrir")
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self.open_panel)
         actions_layout.addWidget(self.open_btn)
 
-        self.edit_btn = QPushButton("Editar")
+        self.restore_btn = QPushButton("♻️ Restaurar")
+        self.restore_btn.setEnabled(False)
+        self.restore_btn.setVisible(False)  # Solo visible para paneles archivados
+        self.restore_btn.clicked.connect(self.restore_panel)
+        actions_layout.addWidget(self.restore_btn)
+
+        self.edit_btn = QPushButton("✏️ Editar")
         self.edit_btn.setEnabled(False)
         self.edit_btn.clicked.connect(self.edit_panel)
         actions_layout.addWidget(self.edit_btn)
 
-        self.duplicate_btn = QPushButton("Duplicar")
+        self.duplicate_btn = QPushButton("📋 Duplicar")
         self.duplicate_btn.setEnabled(False)
         self.duplicate_btn.clicked.connect(self.duplicate_panel)
         actions_layout.addWidget(self.duplicate_btn)
 
-        self.delete_btn = QPushButton("Eliminar")
+        self.delete_btn = QPushButton("🗑️ Eliminar")
         self.delete_btn.setEnabled(False)
         self.delete_btn.clicked.connect(self.delete_panel)
         actions_layout.addWidget(self.delete_btn)
@@ -252,6 +265,11 @@ class PinnedPanelsManagerWindow(QWidget):
             logger.error(f"Error loading panels: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Error al cargar paneles: {e}")
 
+    def on_status_filter_changed(self):
+        """Handle cuando cambia el filtro de estado (activos/archivados)"""
+        logger.info("Status filter changed - reloading panels")
+        self.filter_panels()
+
     def refresh_panel_list(self):
         """Refrescar lista de paneles"""
         logger.info("Refreshing panel list")
@@ -261,11 +279,19 @@ class PinnedPanelsManagerWindow(QWidget):
         """Filtrar y mostrar paneles según criterios de búsqueda"""
         search_text = self.search_input.text().lower()
         filter_type = self.filter_combo.currentData()
+        status_filter = self.status_filter_combo.currentData()
 
         # Filtrar paneles
         filtered_panels = []
 
         for panel in self.all_panels:
+            # Aplicar filtro de estado (activo/archivado)
+            is_active = panel.get('is_active', 1)
+            if status_filter == "active" and not is_active:
+                continue
+            elif status_filter == "archived" and is_active:
+                continue
+
             # Aplicar filtro de búsqueda
             if search_text:
                 panel_name = panel.get('custom_name', '')
@@ -393,6 +419,27 @@ class PinnedPanelsManagerWindow(QWidget):
             """
             self.stats_label.setText(stats_text)
 
+            # Mostrar/ocultar botones según el estado del panel
+            if is_active:
+                # Panel activo: mostrar todos los botones excepto Restaurar
+                self.open_btn.setVisible(True)
+                self.edit_btn.setVisible(True)
+                self.duplicate_btn.setVisible(True)
+                self.restore_btn.setVisible(False)
+            else:
+                # Panel archivado: solo mostrar Restaurar y Eliminar
+                self.open_btn.setVisible(False)
+                self.edit_btn.setVisible(False)
+                self.duplicate_btn.setVisible(False)
+                self.restore_btn.setVisible(True)
+
+            # Habilitar botones
+            self.open_btn.setEnabled(True)
+            self.edit_btn.setEnabled(True)
+            self.duplicate_btn.setEnabled(True)
+            self.delete_btn.setEnabled(True)
+            self.restore_btn.setEnabled(True)
+
         except Exception as e:
             logger.error(f"Error showing panel details: {e}", exc_info=True)
 
@@ -448,18 +495,25 @@ class PinnedPanelsManagerWindow(QWidget):
     def open_panel_by_id(self, panel_id: int):
         """Abrir un panel por su ID"""
         try:
+            logger.info(f"[PANEL MANAGER] Opening panel {panel_id}")
+            logger.debug(f"[PANEL MANAGER] Main window reference: {self.main_window is not None}")
+
             # Verificar si el panel ya está abierto
-            if self._is_panel_open(panel_id):
+            is_open = self._is_panel_open(panel_id)
+            logger.debug(f"[PANEL MANAGER] Panel {panel_id} is_open: {is_open}")
+
+            if is_open:
                 # Enfocar el panel existente
                 self._focus_panel(panel_id)
-                logger.info(f"Panel {panel_id} already open, focusing...")
+                logger.info(f"[PANEL MANAGER] Panel {panel_id} already open, focusing...")
             else:
                 # Emitir señal para que MainWindow abra el panel
+                logger.info(f"[PANEL MANAGER] Emitting signal to open panel {panel_id}")
                 self.panel_open_requested.emit(panel_id)
-                logger.info(f"Requested to open panel {panel_id}")
+                logger.info(f"[PANEL MANAGER] Signal emitted successfully for panel {panel_id}")
 
         except Exception as e:
-            logger.error(f"Error opening panel: {e}", exc_info=True)
+            logger.error(f"[PANEL MANAGER] Error opening panel: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Error al abrir panel: {e}")
 
     def edit_panel(self):
@@ -612,6 +666,45 @@ class PinnedPanelsManagerWindow(QWidget):
             logger.error(f"Error deleting panel: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Error al eliminar panel: {e}")
 
+    def restore_panel(self):
+        """Restaurar un panel archivado (marcarlo como activo)"""
+        if not self.current_selected_panel_id:
+            return
+
+        try:
+            panel = self.panels_manager.get_panel_by_id(self.current_selected_panel_id)
+
+            if not panel:
+                QMessageBox.warning(self, "Error", "Panel no encontrado")
+                return
+
+            panel_name = panel.get('custom_name') or self._get_category_name(panel['category_id'])
+
+            # Confirmar restauración
+            reply = QMessageBox.question(
+                self,
+                "Restaurar Panel",
+                f"¿Restaurar el panel '{panel_name}'?\n\n"
+                f"El panel volverá a estar activo y se podrá anclar nuevamente.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+            # Restaurar panel (marcarlo como activo)
+            self.panels_manager.restore_panel(self.current_selected_panel_id)
+
+            # Refrescar lista para mostrar el cambio
+            self.refresh_panel_list()
+
+            logger.info(f"Panel {self.current_selected_panel_id} restored")
+            QMessageBox.information(self, "Éxito", "Panel restaurado correctamente")
+
+        except Exception as e:
+            logger.error(f"Error restoring panel: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Error al restaurar panel: {e}")
+
     def _get_category_name(self, category_id: int) -> str:
         """Obtener nombre de categoría por ID"""
         try:
@@ -639,17 +732,35 @@ class PinnedPanelsManagerWindow(QWidget):
     def _focus_panel(self, panel_id: int):
         """Enfocar un panel abierto"""
         try:
+            logger.info(f"[PANEL MANAGER] Attempting to focus panel {panel_id}")
+
             if not self.main_window:
+                logger.warning("[PANEL MANAGER] No main_window reference available")
                 return
 
             for panel in self.main_window.pinned_panels:
                 if panel.panel_id == panel_id:
+                    logger.info(f"[PANEL MANAGER] Found panel {panel_id}, focusing...")
+
+                    # Si está minimizado, restaurar primero
+                    if panel.is_minimized:
+                        logger.info(f"[PANEL MANAGER] Panel {panel_id} is minimized, restoring...")
+                        panel.toggle_minimize()
+
+                    # Mostrar el panel si está oculto
+                    if not panel.isVisible():
+                        logger.info(f"[PANEL MANAGER] Panel {panel_id} is hidden, showing...")
+                        panel.show()
+
+                    # Traer al frente y enfocar
                     panel.raise_()
                     panel.activateWindow()
                     panel.setFocus()
+
+                    logger.info(f"[PANEL MANAGER] Panel {panel_id} focused successfully")
                     break
         except Exception as e:
-            logger.error(f"Error focusing panel: {e}")
+            logger.error(f"[PANEL MANAGER] Error focusing panel: {e}", exc_info=True)
 
     def apply_styles(self):
         """Aplicar estilos a la ventana"""
@@ -755,6 +866,9 @@ class PanelListItemWidget(QWidget):
 
     def setup_ui(self):
         """Configurar UI del widget"""
+        # Establecer altura mínima del widget para que se vea completo el texto
+        self.setMinimumHeight(65)
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
