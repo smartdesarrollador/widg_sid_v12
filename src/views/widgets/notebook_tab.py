@@ -240,6 +240,10 @@ class NotebookTab(QWidget):
         self.style_button(self.save_btn, primary=True)
 
         button_layout.addWidget(self.cancel_btn)
+
+        # Add spacing between buttons
+        button_layout.addSpacing(15)
+
         button_layout.addWidget(self.save_btn)
 
         buttons_container_layout.addLayout(button_layout)

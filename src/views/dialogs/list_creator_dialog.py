@@ -251,6 +251,9 @@ class ListCreatorDialog(QDialog):
         cancel_button.clicked.connect(self.reject)
         buttons_layout.addWidget(cancel_button)
 
+        # Add spacing between buttons
+        buttons_layout.addSpacing(15)
+
         self.create_button = QPushButton("Crear Lista")
         self.create_button.setFixedWidth(150)
         self.create_button.clicked.connect(self.create_list)
