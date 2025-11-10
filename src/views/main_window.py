@@ -19,6 +19,7 @@ from views.favorites_floating_panel import FavoritesFloatingPanel
 from views.stats_floating_panel import StatsFloatingPanel
 from views.settings_window import SettingsWindow
 from views.pinned_panels_window import PinnedPanelsWindow
+from views.pinned_panels_manager_window import PinnedPanelsManagerWindow
 from views.dialogs.popular_items_dialog import PopularItemsDialog
 from views.dialogs.forgotten_items_dialog import ForgottenItemsDialog
 from views.dialogs.suggestions_dialog import FavoriteSuggestionsDialog
@@ -934,10 +935,13 @@ class MainWindow(QMainWindow):
         # Register Ctrl+Shift+N to toggle notebook
         self.hotkey_manager.register_hotkey("ctrl+shift+n", self.toggle_notebook)
 
+        # Register Ctrl+Shift+P to open pinned panels manager
+        self.hotkey_manager.register_hotkey("ctrl+shift+p", self.show_pinned_panels_manager)
+
         # Start listening for hotkeys
         self.hotkey_manager.start()
 
-        print("Hotkeys registered: Ctrl+Shift+V (toggle window), Ctrl+Shift+N (toggle notebook)")
+        print("Hotkeys registered: Ctrl+Shift+V (toggle window), Ctrl+Shift+N (toggle notebook), Ctrl+Shift+P (panels manager)")
 
     def setup_tray(self):
         """Setup system tray icon"""
@@ -1413,27 +1417,8 @@ class MainWindow(QMainWindow):
 
     def open_pinned_panels_window(self):
         """Open the pinned panels management window"""
-        if not self.controller:
-            logger.error("No controller available")
-            return
-
-        # Create window if doesn't exist
-        if not self.pinned_panels_window:
-            self.pinned_panels_window = PinnedPanelsWindow(
-                panels_manager=self.controller.pinned_panels_manager,
-                parent=self
-            )
-            # Connect signals
-            self.pinned_panels_window.panel_open_requested.connect(self.on_restore_panel_requested)
-            self.pinned_panels_window.panel_deleted.connect(self.on_panel_deleted_from_window)
-            self.pinned_panels_window.panel_updated.connect(self.on_panel_updated_from_window)
-            logger.debug("Pinned panels window created")
-
-        # Show and raise window
-        self.pinned_panels_window.show()
-        self.pinned_panels_window.raise_()
-        self.pinned_panels_window.activateWindow()
-        logger.info("Pinned panels window opened")
+        # Usar el nuevo método show_pinned_panels_manager()
+        self.show_pinned_panels_manager()
 
     def restore_pinned_panels_on_startup(self):
         """AUTO-RESTORE: Restore active pinned panels from database on application startup"""
@@ -1642,6 +1627,65 @@ class MainWindow(QMainWindow):
                 logger.info(f"Updating currently open panel {panel_id}")
                 panel.update_customization(custom_name=custom_name, custom_color=custom_color)
                 break
+
+    def show_pinned_panels_manager(self):
+        """Mostrar ventana de gestión de paneles anclados"""
+        try:
+            # Crear ventana si no existe
+            if not hasattr(self, 'panels_manager_window') or not self.panels_manager_window:
+                self.panels_manager_window = PinnedPanelsManagerWindow(
+                    config_manager=self.config_manager,
+                    pinned_panels_manager=self.controller.pinned_panels_manager,
+                    main_window=self,
+                    parent=self
+                )
+
+                # Conectar señales
+                self.panels_manager_window.panel_open_requested.connect(self.on_restore_panel_requested)
+                self.panels_manager_window.panel_deleted.connect(self.on_panel_deleted_from_manager)
+                self.panels_manager_window.panel_updated.connect(self.on_panel_updated_from_manager)
+
+            # Refrescar y mostrar
+            self.panels_manager_window.refresh_panel_list()
+            self.panels_manager_window.show()
+            self.panels_manager_window.raise_()
+            self.panels_manager_window.activateWindow()
+
+            logger.info("Pinned Panels Manager Window opened")
+
+        except Exception as e:
+            logger.error(f"Error opening panels manager window: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Error al abrir gestor de paneles: {e}")
+
+    def on_panel_deleted_from_manager(self, panel_id: int):
+        """Handle cuando un panel es eliminado desde el manager"""
+        try:
+            # Remover panel de la lista si está abierto
+            for i, panel in enumerate(self.pinned_panels):
+                if panel.panel_id == panel_id:
+                    panel.close()
+                    self.pinned_panels.pop(i)
+                    logger.info(f"Closed panel {panel_id} after deletion")
+                    break
+        except Exception as e:
+            logger.error(f"Error handling panel deletion: {e}")
+
+    def on_panel_updated_from_manager(self, panel_id: int):
+        """Handle cuando un panel es actualizado desde el manager"""
+        try:
+            # Actualizar panel si está abierto
+            for panel in self.pinned_panels:
+                if panel.panel_id == panel_id:
+                    # Recargar datos del panel
+                    panel_data = self.controller.pinned_panels_manager.get_panel_by_id(panel_id)
+                    if panel_data:
+                        panel.custom_name = panel_data.get('custom_name')
+                        panel.custom_color = panel_data.get('custom_color')
+                        panel.apply_custom_styling()
+                        logger.info(f"Updated panel {panel_id} styling")
+                    break
+        except Exception as e:
+            logger.error(f"Error handling panel update: {e}")
 
     def closeEvent(self, event):
         """Override close event to minimize to tray instead of closing"""
