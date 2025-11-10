@@ -214,8 +214,19 @@ class NotebookTab(QWidget):
         form_layout.addWidget(self.active_check)
         form_layout.addWidget(self.archived_check)
 
-        # === BOTONES ===
-        form_layout.addSpacing(10)
+        # Add stretch at the end of form (inside scroll)
+        form_layout.addStretch()
+
+        # Agregar widget al scroll
+        scroll.setWidget(form_widget)
+        main_layout.addWidget(scroll)
+
+        # === BOTONES (FUERA DEL SCROLL, FIJOS EN LA PARTE INFERIOR) ===
+        buttons_container = QWidget()
+        buttons_container_layout = QVBoxLayout(buttons_container)
+        buttons_container_layout.setContentsMargins(20, 10, 20, 20)
+        buttons_container_layout.setSpacing(0)
+
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
@@ -231,16 +242,14 @@ class NotebookTab(QWidget):
         button_layout.addWidget(self.cancel_btn)
         button_layout.addWidget(self.save_btn)
 
-        form_layout.addLayout(button_layout)
-        form_layout.addStretch()
+        buttons_container_layout.addLayout(button_layout)
 
         # Conectar botones
         self.save_btn.clicked.connect(self.on_save_clicked)
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
 
-        # Agregar widget al scroll
-        scroll.setWidget(form_widget)
-        main_layout.addWidget(scroll)
+        # Agregar contenedor de botones al layout principal (fuera del scroll)
+        main_layout.addWidget(buttons_container)
 
         # Estilo general del widget
         self.setStyleSheet("""
