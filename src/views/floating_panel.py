@@ -142,7 +142,12 @@ class FloatingPanel(QWidget):
 
         # Header with category name and close button
         self.header_widget = QWidget()
-        self.header_widget.setStyleSheet(self.theme.get_header_style())
+        self.header_widget.setStyleSheet("""
+            QWidget {
+                background-color: #007acc;
+                border-radius: 6px 6px 0 0;
+            }
+        """)
         self.header_layout = QHBoxLayout(self.header_widget)
         self.header_layout.setContentsMargins(15, 10, 10, 10)
         self.header_layout.setSpacing(5)
@@ -296,11 +301,6 @@ class FloatingPanel(QWidget):
 
         # Agregar espaciador
         filters_button_layout.addSpacing(10)
-
-        # Label para el filtro de estado
-        state_label = QLabel("Estado:")
-        state_label.setStyleSheet(self.theme.get_label_style('normal'))
-        filters_button_layout.addWidget(state_label)
 
         # ComboBox para filtrar por estado
         self.state_filter_combo = QComboBox()
