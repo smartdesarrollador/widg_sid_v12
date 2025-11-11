@@ -64,6 +64,9 @@ class PinnedPanelsManagerWindow(QWidget):
             Qt.WindowType.WindowStaysOnTopHint
         )
 
+        # Importante: No cerrar la aplicación al cerrar esta ventana
+        self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
+
         # Layout principal
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -854,6 +857,8 @@ class PinnedPanelsManagerWindow(QWidget):
     def closeEvent(self, event):
         """Handle window close event"""
         logger.info("Pinned Panels Manager Window closed")
+        # Ocultar en lugar de cerrar para poder reutilizar la ventana
+        self.hide()
         event.accept()
 
 
