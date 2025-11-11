@@ -337,7 +337,9 @@ class PinnedPanelsManagerWindow(QWidget):
         for panel in panels:
             item_widget = PanelListItemWidget(panel, self.config_manager)
             item = QListWidgetItem(self.panels_list)
-            item.setSizeHint(item_widget.sizeHint())
+            # Ajustar sizeHint para incluir el borde de selección (2px en cada lado = 4px total)
+            widget_size = item_widget.sizeHint()
+            item.setSizeHint(widget_size)
             item.setData(Qt.ItemDataRole.UserRole, panel['id'])
             self.panels_list.addItem(item)
             self.panels_list.setItemWidget(item, item_widget)
@@ -821,19 +823,24 @@ class PinnedPanelsManagerWindow(QWidget):
             }
 
             QListWidget {
-                background-color: #2d2d2d;
+                background-color: #1e1e1e;
                 border: 1px solid #3d3d3d;
                 border-radius: 3px;
+                padding: 5px;
             }
 
             QListWidget::item {
-                padding: 5px;
-                border-bottom: 1px solid #3d3d3d;
+                padding: 1px;
+                margin: 4px 3px;
+                background-color: transparent;
+                border: 2px solid transparent;
+                border-radius: 8px;
             }
 
             QListWidget::item:selected {
-                background-color: #00aaff;
-                color: #ffffff;
+                background-color: transparent;
+                border: 2px solid #00aaff;
+                border-radius: 8px;
             }
 
             QTextEdit {
@@ -869,8 +876,18 @@ class PanelListItemWidget(QWidget):
         # Establecer altura mínima del widget para que se vea completo el texto
         self.setMinimumHeight(65)
 
+        # Aplicar estilo de fondo uniforme
+        self.setStyleSheet("""
+            PanelListItemWidget {
+                background-color: #252525;
+                border-radius: 6px;
+                border: none;
+            }
+        """)
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # Icono de estado
         status_label = QLabel()
